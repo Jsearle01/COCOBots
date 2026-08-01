@@ -39,6 +39,38 @@
 > variant. Reproduce with `python tools/repalette.py --glyphs 221 --hue-coverage`.
 > Render: [`../reports/C5-renders/hue-coverage.png`](../reports/C5-renders/hue-coverage.png).
 
+### Compared against the palette already in the code
+
+`graphics.asm`'s `PALETTERGB` is hand-authored with named colours — black, white, green, blue, dark
+grey, light grey, brown, light blue, tanish, orange, yellow, light green, light orange, red, and
+black/white again. **It covers hues deliberately**, which is the thing the frequency-weighted
+derivation failed to do. Rendered on the same conversion at 221 glyphs:
+
+| | in-code `PALETTERGB` | adopted |
+|---|---:|---:|
+| error | **90.12** | **83.34** |
+| distinct colours | 14 of 16 | 16 of 16 |
+| green pixels rendered | **0.00%** | 0.74% |
+| red pixels rendered | 0.24% | 2.19% |
+
+**Two reasons it does worse on this artwork, neither of them a criticism of the palette:**
+
+1. **Slots 0/14 are both `$00` and 1/15 both `$3F`.** That pairing exists so `COMA`/`COMB` inverts
+   black↔white cleanly — the source comment at slot 15 says as much
+   (*"SOMETHING TO DO WITH THE INVERSION PROCESS???"*, answered on the next line). It is exactly
+   right for a monochrome font with inverse video. **With inverse removed it buys nothing and costs
+   two of sixteen slots.**
+2. **Its greens are PETSCII primaries, not Amiga greens.** Slot 2 is `$10` = (0,170,0) and slot 11
+   is `$12` = (0,255,0) — fully saturated. The art's greens are `$14` (85,170,0) and `$15`
+   (85,170,85), muted. Nothing in the artwork is near enough to select the saturated ones, so both
+   green slots sit unused and green renders at 0.00%.
+
+**The palette was built for the PETSCII original, and does that job** — CLAUDE.md §4 records the
+monochrome font as a deliberate choice to match the PET during development. It is being measured
+here against a different target.
+
+Render: [`../reports/C5-renders/incode-palette.png`](../reports/C5-renders/incode-palette.png).
+
 ---
 
 ## The superseded derivation follows, retained as the record of how it was reached
