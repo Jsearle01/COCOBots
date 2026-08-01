@@ -15,6 +15,12 @@
 *.lst
 *.dsk
 
+# Tooling scratch — MAME writes cfg/ and snap/ into the working directory unless
+# -cfg_directory / -snapshot_directory point elsewhere (A2); Python caches tools/
+/cfg/
+/snap/
+__pycache__/
+
 # Packaging artifacts — must never be committed
 /*.zip
 PLACEMENT.md
