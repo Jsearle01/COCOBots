@@ -71,6 +71,37 @@ here against a different target.
 
 Render: [`../reports/C5-renders/incode-palette.png`](../reports/C5-renders/incode-palette.png).
 
+#### Reclaiming the two duplicate slots
+
+**Jay, 2026-08-01:** *"there are also two whites and two black so i can get two more colors with my
+palette"*. Correct — slots 14 and 15 duplicate 0 and 1, and once inverse is removed they are free.
+Measured, keeping all fourteen of the named colours untouched and only filling the two freed slots:
+
+| variant | the two freed slots become | error | cyan px | magenta px |
+|---|---|---:|---:|---:|
+| yours, as-is | — (duplicates) | 90.12 | 0.00% | 0.00% |
+| **yours + error-optimal** | `$03` cyan, `$0E` blue | **85.48** | 13.73% | 0.00% |
+| yours + hue coverage | `$03` cyan, `$2A` magenta | 87.31 | 14.50% | 0.93% |
+| (fully derived, for reference) | — | 83.34 | — | — |
+
+**Two free slots recover 4.6 of the 6.8 gap** to the fully derived palette, without touching a
+single one of your named colours. The art wants cyan badly — it goes straight to 13.7% of rendered
+pixels from nothing.
+
+**One thing not to do.** Letting the optimiser *also* retune the two saturated greens gives 84.50,
+but it spends them on more blue and cyan — i.e. **it removes green from the palette entirely.** That
+is the same frequency-over-importance trap that produced the original defect: green is 1.3% of art
+pixels and squared error will always trade it away. The greens are worth keeping deliberately, and
+retuning them to the art's muted `$14`/`$15` rather than dropping them is the version worth
+rendering if this route is taken.
+
+**Green still renders at 0.00% in all three**, because the saturated `$10`/`$12` remain unselectable
+against the art's muted greens (see above). Fixing that is a separate change from reclaiming the
+slots.
+
+Render: [`../reports/C5-renders/incode-plus-two.png`](../reports/C5-renders/incode-plus-two.png)
+— source, yours as-is, +cyan+blue, +cyan+magenta.
+
 ---
 
 ## The superseded derivation follows, retained as the record of how it was reached
