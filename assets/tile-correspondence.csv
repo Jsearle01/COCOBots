@@ -1,0 +1,257 @@
+tile,art_index,score,wscore,confidence,cells_scored,live,informative,rank,margin,best_score_index,notes
+0,0,1.0,,high,9,True,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+1,1,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+2,2,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+3,3,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+4,4,0.9913,1.0,high,9,True,True,1,0.0278,4,
+5,5,1.0,1.0,high,9,True,True,1,0.0278,5,
+6,6,1.0,1.0,high,9,True,True,1,0.0208,6,
+7,7,0.9878,0.9973,high,9,True,True,2,-0.0069,10,
+8,8,0.9653,0.9479,high,9,True,True,2,-0.0069,12,
+9,9,0.8906,0.8906,low,9,True,True,51,-0.0816,154,identity ranks 51 of 256; index 154 beats identity by 0.082
+10,10,0.9878,0.9948,high,9,True,True,1,0.0,7,
+11,11,0.9878,0.9975,high,9,True,True,1,0.0278,11,
+12,12,1.0,1.0,high,9,True,True,1,0.059,12,
+13,13,0.9705,0.9799,high,9,True,True,3,-0.0226,28,
+14,14,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+15,15,0.9618,0.9745,low,9,True,True,4,-0.033,10,identity ranks 4 of 256
+16,16,0.9878,0.9973,high,9,True,True,2,-0.0087,28,
+17,17,0.9861,0.9975,high,9,True,True,1,0.0,17,
+18,18,0.9653,0.9775,low,9,True,True,4,-0.0312,28,identity ranks 4 of 256
+19,19,1.0,1.0,high,9,True,True,1,0.0312,19,
+20,20,0.9427,0.9886,low,9,True,True,6,-0.0434,28,identity ranks 6 of 256
+21,21,0.8872,1.0,low,9,True,True,45,-0.0712,5,identity ranks 45 of 256; index 5 beats identity by 0.071
+22,22,1.0,1.0,high,9,True,True,1,0.0781,22,
+23,23,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+24,24,0.7031,0.7226,unmatched,7,True,True,15,-0.0424,202,identity ranks 15 of 256
+25,25,0.9757,0.9781,high,9,True,True,3,-0.0191,10,
+26,26,0.9878,0.9978,high,9,True,True,1,0.0208,26,
+27,27,0.9878,0.9979,high,9,True,True,1,0.0278,27,
+28,28,1.0,1.0,high,9,True,True,1,0.0087,28,
+29,29,0.9219,0.9834,high,7,True,True,1,0.0045,29,
+30,30,1.0,1.0,high,8,False,True,1,0.0312,30,
+31,31,1.0,1.0,high,8,True,True,1,0.0312,31,
+32,32,0.9473,0.9836,high,8,True,True,1,0.0566,32,
+33,33,0.9781,0.9959,high,5,True,True,1,0.0344,33,
+34,34,1.0,1.0,high,8,True,True,1,0.0625,34,
+35,35,0.9473,0.9836,high,8,True,True,1,0.0566,35,
+36,36,0.8993,0.932,low,9,True,True,1,0.0104,36,
+37,37,0.9286,0.8548,high,7,True,True,1,0.0513,37,
+38,38,0.9271,0.9635,low,9,True,True,23,-0.0139,154,identity ranks 23 of 256
+39,39,0.9132,0.9467,high,9,True,True,1,0.0191,39,
+40,40,0.9271,0.9635,low,3,True,True,31,-0.0208,154,identity ranks 31 of 256; only 3 of 9 cells scored (6 masked)
+41,41,0.85,0.925,low,5,True,True,5,-0.0625,143,identity ranks 5 of 256; index 143 beats identity by 0.062
+42,42,0.8613,0.8681,low,8,True,True,1,0.0312,42,
+43,43,0.8802,0.9416,low,3,True,True,4,-0.1094,78,identity ranks 4 of 256; index 78 beats identity by 0.109; only 3 of 9 cells scored (6 masked)
+44,44,0.9344,0.9702,high,5,True,True,2,-0.0219,19,
+45,45,0.8691,0.8636,low,8,True,True,5,-0.0469,137,identity ranks 5 of 256
+46,46,0.8889,0.9173,low,9,True,True,2,-0.0035,137,
+47,47,0.8906,0.8906,low,3,True,True,74,-0.0885,154,identity ranks 74 of 256; index 154 beats identity by 0.089; only 3 of 9 cells scored (6 masked)
+48,48,1.0,1.0,high,8,True,True,1,0.0098,48,
+49,49,1.0,1.0,high,6,True,True,1,0.0,5,
+50,50,0.9668,0.9336,high,8,True,True,3,-0.0176,5,
+51,51,0.8187,0.8411,low,5,True,True,14,-0.0687,69,identity ranks 14 of 256; index 69 beats identity by 0.069
+52,52,0.9609,0.9219,low,6,True,True,4,-0.0182,12,identity ranks 4 of 256
+53,53,0.8375,0.8839,low,5,True,True,8,-0.0375,58,identity ranks 8 of 256
+54,54,0.7917,0.6881,low,9,True,True,140,-0.125,154,identity ranks 140 of 256; index 154 beats identity by 0.125
+55,55,0.9453,0.9844,high,4,True,True,1,0.0273,55,only 4 of 9 cells scored (5 masked)
+56,56,0.9219,0.8438,low,8,True,True,26,-0.0625,77,identity ranks 26 of 256; index 77 beats identity by 0.062
+57,57,0.8455,0.8431,low,9,True,True,60,-0.0712,154,identity ranks 60 of 256; index 154 beats identity by 0.071
+58,58,0.9288,0.9631,high,9,True,True,1,0.0122,58,
+59,59,0.9453,0.9878,high,6,True,True,1,0.026,59,
+60,60,0.8938,0.9146,low,5,True,True,1,0.1438,60,
+61,61,0.8375,0.858,low,5,True,True,1,0.0469,61,
+62,62,0.7934,0.8802,low,9,True,True,171,-0.2066,5,identity ranks 171 of 256; index 5 beats identity by 0.207
+63,63,0.9004,0.9498,high,8,True,True,1,0.0059,63,
+64,64,0.8542,0.8317,low,9,True,True,76,-0.0972,5,identity ranks 76 of 256; index 5 beats identity by 0.097
+65,65,0.8351,0.738,low,9,True,True,92,-0.1215,176,identity ranks 92 of 256; index 176 beats identity by 0.122
+66,66,0.9705,0.9911,high,9,True,True,1,0.099,66,
+67,67,0.9082,0.8816,high,8,True,True,1,0.0078,67,
+68,68,0.9933,1.0,high,7,True,True,1,0.0112,68,
+69,69,1.0,1.0,high,8,False,True,1,0.0,69,
+70,70,1.0,1.0,high,8,False,True,1,0.0,69,
+71,71,0.9844,1.0,high,7,True,True,1,0.0246,71,
+72,72,0.9896,0.9866,high,6,True,True,1,0.0052,72,
+73,73,0.9643,0.9939,high,7,False,True,1,0.1027,73,
+74,74,0.9316,0.9852,high,8,False,True,1,0.0371,74,
+75,75,0.9978,0.9923,high,7,True,True,1,0.0513,75,
+76,76,0.9792,0.9625,high,9,True,True,2,-0.0069,77,
+77,77,0.9965,0.9959,high,9,False,True,1,0.0278,77,
+78,78,0.9792,0.9779,high,9,False,True,1,0.0278,78,
+79,79,0.9844,1.0,high,7,True,True,1,0.0268,79,
+80,80,1.0,1.0,high,7,True,True,1,0.0,19,
+81,81,0.9896,0.9866,high,6,True,True,1,0.0208,81,
+82,82,0.974,0.9665,high,9,True,True,1,0.0174,82,
+83,83,0.9453,0.9869,high,6,True,True,1,0.0026,83,
+84,84,0.9955,0.9949,high,7,False,True,1,0.0,84,
+85,85,0.9688,0.9943,high,8,False,True,1,0.1348,85,
+86,86,1.0,1.0,high,9,False,True,1,0.0365,86,
+87,87,0.8817,0.8335,low,7,True,True,2,-0.0335,37,
+88,88,1.0,1.0,high,8,False,True,1,0.0547,88,
+89,89,0.9316,0.9852,high,8,False,True,1,0.0371,89,
+90,90,1.0,1.0,high,8,True,True,1,0.0469,90,
+91,91,0.9878,0.9978,high,9,True,True,1,0.0191,91,
+92,92,1.0,1.0,high,9,True,True,1,0.0312,92,
+93,93,0.9983,0.9933,high,9,True,True,1,0.0278,93,
+94,94,1.0,1.0,high,9,True,True,1,0.0347,94,
+95,95,0.9453,0.9781,high,6,True,True,1,0.0182,95,
+96,96,0.9948,0.9991,high,9,False,True,1,0.125,96,
+97,97,0.9965,0.9994,high,9,False,True,1,0.0781,97,
+98,98,0.8611,0.7672,low,9,False,True,4,-0.0243,141,identity ranks 4 of 256
+99,99,0.8507,0.7767,low,9,False,True,31,-0.0434,135,identity ranks 31 of 256
+100,100,0.875,0.8557,low,9,False,True,1,0.0087,100,
+101,101,0.875,0.8557,low,9,False,True,1,0.0122,101,
+102,102,0.8802,0.8592,low,9,False,True,1,0.0139,102,
+103,103,0.8802,0.8592,low,9,False,True,1,0.0174,103,
+104,104,0.8993,0.8144,low,9,True,True,1,0.0069,104,
+105,105,0.901,0.8202,high,9,True,True,1,0.0156,105,
+106,106,0.9427,0.9141,low,9,True,True,6,-0.0503,153,identity ranks 6 of 256; index 153 beats identity by 0.050
+107,107,0.8906,0.8493,low,9,True,True,1,0.0486,107,
+108,108,0.9201,0.854,high,9,True,True,2,-0.0087,88,
+109,109,0.9028,0.8441,high,9,True,True,1,0.0191,109,
+110,110,0.8854,0.8802,low,9,True,True,37,-0.0556,154,identity ranks 37 of 256; index 154 beats identity by 0.056
+111,111,0.967,0.9642,high,9,True,True,1,0.1042,111,
+112,112,0.9107,0.9107,low,7,True,True,12,-0.0179,5,identity ranks 12 of 256
+113,113,0.9722,0.9375,high,9,True,True,2,-0.0139,5,
+114,114,0.9323,0.8736,high,9,True,True,1,0.0469,114,
+115,115,0.8767,0.7536,low,9,False,True,1,0.026,115,
+116,116,0.9149,0.9694,high,9,True,True,2,-0.0017,154,
+117,117,0.8611,0.8021,low,9,True,True,72,-0.1007,154,identity ranks 72 of 256; index 154 beats identity by 0.101
+118,118,0.9514,0.8892,high,9,True,True,1,0.0625,118,
+119,119,0.9062,0.9062,low,7,True,True,21,-0.0402,92,identity ranks 21 of 256
+120,120,0.9297,0.9547,high,8,True,True,1,0.0996,120,
+121,121,1.0,1.0,high,3,True,True,1,0.1042,121,only 3 of 9 cells scored (6 masked)
+122,122,0.9635,0.9635,high,3,True,True,2,-0.0365,21,only 3 of 9 cells scored (6 masked)
+123,123,0.9635,0.9635,high,3,True,True,2,-0.0156,106,only 3 of 9 cells scored (6 masked)
+124,124,0.8906,0.8906,low,3,True,True,86,-0.0885,154,identity ranks 86 of 256; index 154 beats identity by 0.089; only 3 of 9 cells scored (6 masked)
+125,125,0.8906,0.8906,low,3,True,True,74,-0.0885,154,identity ranks 74 of 256; index 154 beats identity by 0.089; only 3 of 9 cells scored (6 masked)
+126,126,0.8906,0.8906,low,5,True,True,68,-0.0844,154,identity ranks 68 of 256; index 154 beats identity by 0.084
+127,127,1.0,1.0,high,1,True,True,1,0.0,4,only 1 of 9 cells scored (8 masked)
+128,128,0.9965,0.9949,high,9,True,True,1,0.0712,128,
+129,129,0.9965,0.9949,high,9,True,True,1,0.0816,129,
+130,130,0.9727,0.9905,high,8,False,True,1,0.0391,130,
+131,131,0.8438,0.8351,low,9,True,True,6,-0.0434,137,identity ranks 6 of 256
+132,132,0.8887,0.9071,low,8,True,True,1,0.0898,132,
+133,133,0.9653,0.9617,high,9,True,True,1,0.066,133,
+134,134,0.9375,0.8281,low,9,False,True,21,-0.0104,154,identity ranks 21 of 256
+135,135,0.9754,0.9789,high,7,True,True,1,0.0536,135,
+136,136,0.934,0.8469,high,9,True,True,1,0.033,136,
+137,137,0.9844,0.9972,high,9,True,True,1,0.1267,137,
+138,138,0.7719,0.855,low,5,True,True,65,-0.1594,203,identity ranks 65 of 256; index 203 beats identity by 0.159
+139,139,0.8299,0.7865,low,9,True,True,90,-0.1007,154,identity ranks 90 of 256; index 154 beats identity by 0.101
+140,140,0.8906,0.798,low,9,False,True,2,-0.0191,130,
+141,141,0.8906,0.798,low,9,False,True,2,-0.0156,130,
+142,142,0.8542,0.8259,low,9,False,True,36,-0.0712,130,identity ranks 36 of 256; index 130 beats identity by 0.071
+143,143,1.0,1.0,high,9,True,True,1,0.2014,143,
+144,144,1.0,1.0,high,9,True,True,1,0.0503,144,
+145,145,1.0,1.0,high,9,True,True,1,0.0347,145,
+146,146,0.9913,1.0,high,9,False,True,1,0.0833,146,
+147,147,0.9774,0.9761,high,9,False,True,2,-0.0087,145,
+148,148,0.9062,0.9437,high,9,True,True,1,0.0625,148,
+149,149,0.8681,0.8665,low,9,True,True,30,-0.0365,133,identity ranks 30 of 256
+150,150,1.0,1.0,high,9,False,True,1,0.1875,150,
+151,151,0.9115,0.9115,high,9,False,True,1,0.0156,151,
+152,152,1.0,1.0,high,9,False,True,1,0.1042,152,
+153,153,1.0,1.0,high,9,False,True,1,0.0208,153,
+154,154,1.0,1.0,high,1,True,True,1,0.0,135,only 1 of 9 cells scored (8 masked)
+155,155,0.9344,0.9702,high,5,True,True,3,-0.0219,19,
+156,156,0.9878,0.9928,high,9,False,True,1,0.1128,156,
+157,157,1.0,1.0,high,9,False,True,1,0.1858,157,
+158,158,0.9271,0.9635,low,3,True,True,43,-0.0208,154,identity ranks 43 of 256; only 3 of 9 cells scored (6 masked)
+159,159,0.9453,0.9792,high,8,True,True,2,-0.0195,245,
+160,160,0.842,0.8225,low,9,False,True,6,-0.0903,96,identity ranks 6 of 256; index 96 beats identity by 0.090
+161,161,0.9861,0.9911,high,9,False,True,1,0.0347,161,
+162,162,0.9688,0.9688,high,9,False,True,2,-0.0035,154,
+163,163,0.9271,0.9635,low,9,True,True,23,-0.0521,245,identity ranks 23 of 256; index 245 beats identity by 0.052
+164,164,0.8828,0.8864,low,8,False,True,1,0.0254,164,
+165,165,0.8359,0.8559,low,8,False,True,30,-0.0469,164,identity ranks 30 of 256
+166,166,0.8242,0.8006,low,8,True,True,36,-0.1074,10,identity ranks 36 of 256; index 10 beats identity by 0.107
+167,167,0.901,0.9635,low,9,True,True,26,-0.0295,154,identity ranks 26 of 256
+168,168,0.9149,0.9694,high,9,True,True,2,-0.0017,154,
+169,169,0.5,0.5,unmatched,9,True,True,254,-0.3438,148,identity ranks 254 of 256; index 148 beats identity by 0.344
+170,170,0.7969,0.7708,low,8,True,True,62,-0.0586,12,identity ranks 62 of 256; index 12 beats identity by 0.059
+171,171,0.8854,0.8344,low,9,True,True,54,-0.0833,154,identity ranks 54 of 256; index 154 beats identity by 0.083
+172,172,0.934,0.9469,low,9,False,True,6,-0.0434,28,identity ranks 6 of 256
+173,173,0.9688,0.9608,high,9,False,True,1,0.0017,173,
+174,174,0.941,0.9001,low,9,True,True,7,-0.0417,94,identity ranks 7 of 256
+175,175,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+176,176,0.9653,0.8902,high,9,True,True,2,-0.0122,5,
+177,177,0.9705,0.8862,high,9,True,True,1,0.0017,177,
+178,178,0.9653,0.8704,high,9,True,True,3,-0.0052,5,
+179,179,0.9583,0.8558,high,9,True,True,3,-0.0156,5,
+180,180,0.9722,0.8929,high,9,True,True,1,0.0035,180,
+181,181,1.0,1.0,high,8,False,True,1,0.0195,181,
+182,182,0.9965,1.0,high,9,False,True,1,0.0243,182,
+183,183,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+184,184,0.9766,0.9928,high,4,True,True,2,-0.0156,97,only 4 of 9 cells scored (5 masked)
+185,185,0.9349,0.9521,high,6,True,True,1,0.013,185,
+186,186,0.9258,0.9375,low,4,True,True,11,-0.0273,19,identity ranks 11 of 256; only 4 of 9 cells scored (5 masked)
+187,187,0.9896,0.9979,high,9,True,True,1,0.0035,187,
+188,188,0.9349,0.9521,high,6,True,True,1,0.013,188,
+189,189,0.9062,0.9062,low,9,True,True,36,-0.0625,0,identity ranks 36 of 256; index 0 beats identity by 0.062
+190,190,0.9062,0.9062,low,6,True,True,36,-0.0625,0,identity ranks 36 of 256; index 0 beats identity by 0.062
+191,191,0.9601,0.9718,low,9,True,True,5,-0.0312,10,identity ranks 5 of 256
+192,192,0.9258,0.9375,low,4,True,True,5,-0.0273,11,identity ranks 5 of 256; only 4 of 9 cells scored (5 masked)
+193,193,0.9062,0.9062,low,6,True,True,35,-0.0625,0,identity ranks 35 of 256; index 0 beats identity by 0.062
+194,194,0.9062,0.9062,low,4,True,True,32,-0.0781,230,identity ranks 32 of 256; index 230 beats identity by 0.078; only 4 of 9 cells scored (5 masked)
+195,195,0.9375,0.952,low,9,True,True,7,-0.059,28,identity ranks 7 of 256; index 28 beats identity by 0.059
+196,196,0.9375,0.9444,high,8,True,True,1,0.0625,196,
+197,197,1.0,1.0,high,9,True,True,1,0.1181,197,
+198,198,0.8477,0.855,low,8,True,True,1,0.0137,198,
+199,199,0.7781,0.8218,low,5,True,True,13,-0.1281,203,identity ranks 13 of 256; index 203 beats identity by 0.128
+200,200,0.7778,0.7439,low,9,True,True,90,-0.0799,0,identity ranks 90 of 256; index 0 beats identity by 0.080
+201,201,0.8333,0.831,low,9,True,True,36,-0.0434,0,identity ranks 36 of 256
+202,202,0.8611,0.8915,low,9,True,True,1,0.0052,202,
+203,203,1.0,1.0,high,7,True,True,1,0.1205,203,
+204,204,0.7875,0.7875,low,5,True,True,100,-0.1031,0,identity ranks 100 of 256; index 0 beats identity by 0.103
+205,205,0.6719,0.6594,unmatched,9,True,True,232,-0.1892,0,identity ranks 232 of 256; index 0 beats identity by 0.189
+206,206,0.8125,0.8125,low,6,True,True,1,0.0339,206,
+207,207,0.9107,0.8683,high,7,True,True,1,0.0312,207,
+208,208,0.9792,0.9297,low,9,True,True,20,-0.0069,0,identity ranks 20 of 256
+209,209,0.9792,0.9437,low,9,True,True,20,-0.0069,154,identity ranks 20 of 256
+210,210,0.9531,0.9531,low,9,True,True,23,-0.0191,154,identity ranks 23 of 256
+211,211,0.8281,0.6009,low,9,True,True,43,-0.0608,154,identity ranks 43 of 256; index 154 beats identity by 0.061
+212,212,0.9375,0.9152,high,9,True,True,1,0.0712,212,
+213,213,0.9792,0.9964,high,9,True,True,1,0.0903,213,
+214,,,,unmatched,0,True,False,,,,"all cells masked (glyphs $55/$66); unscoreable by construction, not a failure"
+215,215,0.8125,0.7625,low,8,True,True,1,0.0137,215,
+216,216,0.9392,0.8961,high,9,True,True,2,-0.0017,218,
+217,217,0.9167,0.8546,low,9,True,True,23,-0.0069,154,identity ranks 23 of 256
+218,218,0.9444,0.8981,high,9,True,True,1,0.0052,218,
+219,219,0.7743,0.6424,low,9,True,True,57,-0.0885,244,identity ranks 57 of 256; index 244 beats identity by 0.089
+220,220,0.967,0.9395,high,9,True,True,1,0.0226,220,
+221,221,0.8371,0.8379,low,7,True,True,39,-0.0424,19,identity ranks 39 of 256
+222,222,0.9392,0.8961,high,9,True,True,1,0.0035,222,
+223,223,0.7285,0.6287,unmatched,8,True,True,112,-0.0801,244,identity ranks 112 of 256; index 244 beats identity by 0.080
+224,224,0.9392,0.8961,high,9,True,True,1,0.0035,224,
+225,225,0.9392,0.8742,high,9,True,True,1,0.0,225,
+226,226,0.9392,0.8742,high,9,True,True,1,0.0,225,
+227,,,,unmatched,0,True,False,,,,"all cells masked (glyphs $55/$66); unscoreable by construction, not a failure"
+228,228,0.9844,0.9531,low,6,True,True,20,-0.0052,0,identity ranks 20 of 256
+229,229,0.9714,0.957,low,6,True,True,20,-0.013,154,identity ranks 20 of 256
+230,230,0.9844,0.9844,high,6,True,True,1,0.0156,230,
+231,231,0.9844,0.9844,high,6,True,True,1,0.0156,231,
+232,232,0.9766,0.9531,low,6,True,True,20,-0.013,154,identity ranks 20 of 256
+233,233,0.9792,0.9583,low,6,True,True,20,-0.0104,154,identity ranks 20 of 256
+234,234,0.9844,0.9844,high,6,True,True,1,0.0156,234,
+235,235,0.9844,0.9844,high,6,True,True,1,0.0156,235,
+236,236,0.9219,0.8938,high,8,True,True,1,0.0,0,
+237,237,0.942,0.9111,high,7,True,True,1,0.0,0,
+238,238,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+239,239,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+240,240,0.8594,0.6977,low,9,False,True,28,-0.0521,244,identity ranks 28 of 256; index 244 beats identity by 0.052
+241,241,0.8906,0.7751,low,9,False,True,1,0.0069,241,
+242,242,0.9965,0.9954,high,9,True,True,1,0.1267,242,
+243,243,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+244,244,0.9792,0.9896,high,9,False,True,1,0.0382,244,
+245,245,0.9792,0.9896,high,9,False,True,1,0.0382,245,
+246,246,0.6719,0.6719,unmatched,9,False,True,75,-0.0625,244,identity ranks 75 of 256; index 244 beats identity by 0.062
+247,247,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+248,248,0.9358,0.8076,low,9,False,True,21,-0.0069,154,identity ranks 21 of 256
+249,249,0.8038,0.6949,low,9,False,True,29,-0.0208,154,identity ranks 29 of 256
+250,250,0.7049,0.6757,unmatched,9,False,True,49,-0.0417,244,identity ranks 49 of 256
+251,251,0.8368,0.7064,low,9,False,True,24,-0.0278,244,identity ranks 24 of 256
+252,252,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+253,253,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+254,254,1.0,,high,9,False,False,1,0.0,0,"no informative cells (every unmasked cell is constant) - agreement is unconstrained, weak evidence"
+255,255,0.8574,0.8061,low,8,False,True,1,0.0391,255,BR cell absent from tileset.bin (file is 1 byte short)
