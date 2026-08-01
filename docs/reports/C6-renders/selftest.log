@@ -1,10 +1,10 @@
 PASS roundtrip:a192 unpack/pack             sha256 b034d241e17640e89bca1785
 PASS roundtrip:a192 save unedited           in b034d241e17640e8 -> out b034d241e17640e8
-PASS roundtrip:a192 version written         font-a192-20260801-193919-0001.bin
+PASS roundtrip:a192 version written         font-a192-20260801-195423-0001.bin
 PASS roundtrip:a192 edited save differs     267d602e24f09614
 PASS roundtrip:a192 prior version survives  never overwritten in place
 PASS roundtrip:shipped save unedited        in b2ff441cb2b34fbd -> out b2ff441cb2b34fbd
-PASS roundtrip:shipped version written      font-shipped-20260801-193919-0001.bin
+PASS roundtrip:shipped version written      font-shipped-20260801-195423-0001.bin
 PASS roundtrip:shipped edited save differs  1c01b89c10f58420
 PASS roundtrip:shipped prior version survives never overwritten in place
 PASS nibble order: high = LEFT              $A3 -> px0=$A px1=$3
@@ -21,9 +21,21 @@ PASS affected: outline set $3A              108 tiles
 PASS affected: outline set $4D              122 tiles
 PASS affected: outline set $0E              1 tiles
 PASS warnings: all 15 text glyphs           $03 $0E $11 $14 $15 $1A $20 $27 $2D $2E $31 $32 $33 $34 $35
-PASS warnings: $66 health bar               glyph $66 - 88 tiles, 268 cells   ! health bar   ! corrupt in source font (CLAUDE.md 2J) - do not repair here   (77 live)
-PASS warnings: quiet glyph is quiet         glyph $3A - 108 tiles, 396 cells   (82 live)
-PASS dead tiles: 67 of 256                  [1, 2, 3, 14, 23, 30]
+PASS warnings: $66 health bar               glyph $66 - 88 tiles, 268 cells   ! health bar   ! corrupt in source font (CLAUDE.md 2J) - do not repair here   (79 referenced, 9 unverified, 0 available)
+PASS warnings: quiet glyph is quiet         glyph $3A - 108 tiles, 396 cells   (103 referenced, 5 unverified, 0 available)
+PASS class: partitions all 256              available 15 + referenced 214 + no-static-ref 27
+PASS class: available matches C6-A1 (15)    14 blanks + tile 255
+PASS class: blankness ignores the remapped table derived from assets/tileset.bin, not the a192 allocation
+PASS class: placed blank is not available   tile 0 is all-$20 and in every level
+PASS class: code-placed units all found     player, hoverbot, rollerbot, bullets, plasma, explosions
+PASS class: DEMATERIALIZE 160/161/162 found ADDB #160 at PETROBOTS_6809.asm:2986
+PASS class: run sentinels are not tiles     CMPA #143 bounds 140-142; CMPA #252 bounds 246-251
+PASS class: sentinel runs are filled        140-142 water droid, 246-251 explosion
+PASS class: timer reload is not a tile      LDA #3 at BACKGROUND_TASKS:2264 sets UNIT_TIMER_B
+PASS class: every code ref is cited         32 evidence rows
+PASS class: no-static-reference are drawn, not skipped 27 tiles marked unverified
+PASS class: no queue drops a tile           worst/cleanup/all each reach all 256
+PASS class: tile 255 warns about storage    available, but not spendable until tileset.bin is 2,816 bytes
 PASS no data: tile 255 BR only (a192)       1 cell(s) without data
 PASS no data: tile 255 BR only (shipped)    1 cell(s) without data
 PASS no data: renders as no-data, not $00   bottom-right 8x8 masked
@@ -44,4 +56,4 @@ PASS palette: 16 adopted slots from assets/palette.json $00 $3F $10 $09 $07 $38 
 PASS palette: every index placeable         
 PASS assets untouched vs HEAD               13 files: no diff
 
-45 checks, 0 failed
+57 checks, 0 failed

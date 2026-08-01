@@ -1,6 +1,7 @@
 # Form B Report — C6 — glyph editor
 
-**Class:** build (tooling). `wip`, pushed before reporting. **No 25.3 gate** — this is a tool, not
+**Class:** build (tooling). **Includes DISPATCH C6-A1 (tile classification), folded in per its §8 —
+no separate report.** `wip`, pushed before reporting. **No 25.3 gate** — this is a tool, not
 game output. **Jay's acceptance is by using it, and that is the real verdict regardless of the ACs.**
 **Nothing applied to the game. No shipped asset modified** (verified by hash, §4 AC9).
 
@@ -19,11 +20,11 @@ what was taken from it.
 
 ### 1 — Summary
 
-**An interactive glyph editor exists and runs.** 2,061 lines across eleven modules, plus a
+**An interactive glyph editor exists and runs.** 2,455 lines across twelve modules, plus a
 double-clickable `glyph-tool.bat` at the repo root matching POP's launcher convention.
 
-**All nine ACs met.** `tools/glyph_tool/selftest.py` — **45 checks, 0 failed**, log at
-`docs/reports/C6-renders/selftest.log`.
+**All nine ACs met, AC7 as amended by C6-A1.** `tools/glyph_tool/selftest.py` — **57 checks, 0
+failed**, log at `docs/reports/C6-renders/selftest.log`.
 
 **The load-bearing two:**
 
@@ -58,15 +59,16 @@ inspection — §6.
 | path | lines | what |
 |---|---:|---|
 | `tools/glyph_tool/glyph_tool_app.py` | 733 | the Tk application |
-| `tools/glyph_tool/selftest.py` | 333 | headless AC proof, 45 checks |
+| `tools/glyph_tool/selftest.py` | 401 | headless AC proof, 57 checks |
 | `tools/glyph_tool/progress.py` | 154 | provenance sidecar + versioned save + autosave |
 | `tools/glyph_tool/edit_model.py` | 145 | strokes, undo/redo, baseline, revert |
 | `tools/glyph_tool/render.py` | 140 | glyph / composed tile / sheet / strip renders |
-| `tools/glyph_tool/tilemap.py` | 136 | cell→glyph table, blast-radius index, dead tiles |
+| `tools/glyph_tool/tilemap.py` | 129 | cell→glyph table, blast-radius index, classification |
+| `tools/glyph_tool/tileclass.py` | 320 | **C6-A1** — derives available / referenced / no-static-reference |
 | `tools/glyph_tool/sheet.py` | 119 | crop, quantise, sub-cell resolution, three reference views |
 | `tools/glyph_tool/config.py` | 118 | the two configurations and their bit-7 rules |
 | `tools/glyph_tool/glyphio.py` | 82 | 4bpp pack/unpack, atomic write, hashing |
-| `tools/glyph_tool/queues.py` | 66 | work order from `ladder.json` / `tile-correspondence.json` |
+| `tools/glyph_tool/queues.py` | 76 | work order; five queues, none drops a tile |
 | `tools/glyph_tool/pixel_map.py` | 35 | 320×200 pixel aspect, derived not assumed |
 | `glyph-tool.bat` | — | repo-root launcher, **CRLF** (idioms §14g) |
 | `docs/project/protection-catalog.md` | — | new §2B-extending entry (AC8) |
@@ -74,7 +76,8 @@ inspection — §6.
 | `.gitignore` | +4 | `/assets/authored/autosave/` — crash buffer, not a record |
 
 **Read, never written:** `assets/tileset.bin`, `build/c4/tileset-192.bin`, `art/*.png`,
-`assets/palette.json`, `assets/tile-correspondence.json`, `docs/reports/C4-renders/ladder.json`.
+`assets/palette.json`, `assets/tile-correspondence.json`, `docs/reports/C4-renders/ladder.json`,
+`src/PETROBOTS_6809.asm`, `src/BACKGROUND_TASKS_6809.ASM`.
 
 ### 3 — Reasoning
 
@@ -189,12 +192,66 @@ slots** — the allocator claimed every one of them. So at 192 glyphs, editing a
 `$03 $0E $11 $14 $15 $1A $20 $27 $2D $2E $31 $32 $33 $34 $35` **will** change on-screen text. `$66`
 is likewise both the health bar and 30 tiles. The warnings fire on all of them.
 
-**AC7 — dead tiles marked; progress persists; zoom on both panels.**
-67 dead tiles, taken from C1's `live` column so the editor and the correspondence report cannot
-drift; drawn as magenta diagonals on the sheet and excluded from the work queues. Progress is a
-tracked JSON sidecar keyed per glyph (`untouched` / `edited` / `done` with first- and last-edit
-timestamps); `edited` is **derived from the bytes** so it cannot lie, `done` is the only field set by
-hand. Zoom: glyph 2–20×, sheet 1–5×, independently.
+**AC7 (as amended by C6-A1) — tiles classified into three categories, nothing skippable; progress
+persists; zoom on both panels.**
+
+`tools/glyph_tool/tileclass.py` derives the classification from four sources — `assets/tileset.bin`
+for blankness, the ten level files for map references, and both `.asm` sources for `UNIT_TILE`
+stores. **The lists in C6-A1 §2 are used only to reconcile; nothing is hardcoded.**
+
+| category | derived | C6-A1 | sheet mark |
+|---|---:|---:|---|
+| **available** | **15** | 15 | **exact match** — green corner tick, empty and editable |
+| **referenced** | **214** | 205 | none (normal) |
+| **no static reference** | **27** | 37 | amber dot — drawn and edited normally |
+
+**Available reconciles exactly**: the same 14 blanks plus tile 255.
+
+**The other two differ by 9 tiles, and in the direction C6-A1 invited** — my scan finds references
+its list does not, so nine tiles move out of "no static reference" into "referenced":
+
+| tiles | found by | evidence |
+|---|---|---|
+| 160, 161, 162 | computed | `ADDB #160` at `PETROBOTS_6809.asm:2986` — C6-A1 §2 predicted this one |
+| 249, 250, 251 | run-to-sentinel | `CMPA #252 ; Did we finish all from 246-251?` at `BACKGROUND_TASKS:1478` |
+| 141, 142 | run-to-sentinel | `CMPA #143` bounded by `LDA #140` at `BACKGROUND_TASKS:1211` |
+| 99 | cmp+inc | `CMPA #98 / INCA` at `BACKGROUND_TASKS:2255` — hoverbot's second frame |
+| 111, 131 | literal | dead-player tile; `LDD #6*256+131` cannister |
+
+**Every code reference cites a file and line**, and the selftest asserts that no tile enters the set
+without one — 32 evidence rows for 27 tiles.
+
+**Three traps found by reading the sites rather than trusting the pattern**, each now a check that
+fails if it returns:
+
+1. **Blankness must come from `assets/tileset.bin`.** C4's allocator remaps cell codes, so the same
+   blank tile reads as nine `$35`s in the 192-glyph table. My first run tested the a192 table, found
+   **zero** blanks, and reclassified all fourteen free slots as artwork.
+2. **`CMPA #252` and `CMPA #143` are exclusive sentinels, not tiles.** Taking them literally marked
+   252 — a genuinely free blank — as referenced, and missed the runs they bound. They now emit
+   `range(start, n)` and never `n`.
+3. **`LDA #3` at `BACKGROUND_TASKS:2264` reloads the animate timer, not a tile.** A naive backtrack
+   from `STA UNIT_TILE,X` walked straight past `LDA UNIT_TILE,X` and reported tile 3 — another free
+   blank — as referenced. The backtrack now stops at anything that redefines the register it cannot
+   resolve. A missed reference is safe (the tile falls to "no static reference" and is drawn anyway);
+   a fabricated one hides a free slot.
+
+**A blank tile that is placed is not free.** Tile 0 is all-`$20` and is the empty floor of every
+level, so `available` is blank **and** unreached. C6-A1's 14-entry list is the same set.
+
+**Nothing is presented as skippable.** The `available` tiles get an inviting green tick rather than
+the greyed-out cross the pre-amendment build drew, and there is a dedicated `available` queue —
+these are free slots for new content, not waste. No queue drops a tile (asserted). Tile 255 carries
+its own warning: *available, but its bottom-right cell has no storage until `tileset.bin` is 2,816
+bytes*, so the slot must not be spent yet.
+
+**The two costs of using a free slot are stated in the UI** (C6-A1 §6): the note on an available tile
+says it needs level placement to appear, and the glyph header shows the pool draw so new shapes
+against the 192 budget are visible.
+
+Progress is a tracked JSON sidecar keyed per glyph (`untouched` / `edited` / `done` with first- and
+last-edit timestamps); `edited` is **derived from the bytes** so it cannot lie, `done` is the only
+field set by hand. Zoom: glyph 2–20×, sheet 1–5×, independently.
 
 **AC8 — protection catalog entry; edited font on a tracked path; autosave present.**
 `docs/project/protection-catalog.md` added (§2D: it extends §2B rather than editing CLAUDE.md's
@@ -223,7 +280,13 @@ inspection per CLAUDE.md §3 and **their content is not analysed or judged here.
 | `C6-05-reference-quantised.png` | reference toggled to the quantised ceiling |
 | `C6-06-reference-c64-oracle.png` | reference toggled to the C64 oracle |
 | `C6-07-affected-strip-optional.png` | the optional strip, on (off by default) |
-| `C6-08-tile255-no-data.png` | tile 255 bottom-right — the no-data cell |
+| `C6-08-available-free-slot.png` | tile 175 — an **available** slot, green tick, editable |
+| `C6-09-tile255-storage-warning.png` | tile 255 — available, with the no-storage warning |
+| `C6-10-no-static-reference.png` | tile 150 — **no static reference**, drawn normally |
+
+Plus two logs, both tracked: `selftest.log` (57 checks) and `tileclass.log` (the derivation and its
+reconciliation against C6-A1 §2), and `tile-classification.json` (the full derived classification
+with per-tile evidence).
 
 **The real verdict is Jay using it.** `glyph-tool.bat` from the repo root.
 
@@ -257,6 +320,24 @@ height-capped full-width row, and defaulting the sheet to 1×. **A permanent gua
 `check_fits()` compares the requested geometry against the screen on every redraw and reports the
 condition in the save banner. This is deliberately a check that *fails visibly*, not a note in a
 report — per the standing lesson that a hazard recorded as a flag is not a hazard handled.
+
+**Deviation 5 — DISPATCH C6-A1 arrived after C6 had been committed and delivered.** It amends AC7,
+so it was applied to the tool and folded into this report rather than reported separately, per its
+§8. What it changed:
+
+| before (C6) | after (C6-A1) |
+|---|---|
+| "67 dead tiles", from level maps only | three derived categories: **15 available / 214 referenced / 27 no static reference** |
+| magenta crosses — read as "skip these" | green corner tick (available/free) and amber dot (unverified); **nothing marked skippable** |
+| dead tiles dropped from the work queues | no queue drops a tile; dedicated `available` and `unverified` queues added |
+| `Mapping.dead`, sourced from C1's `live` column | `tools/glyph_tool/tileclass.py`, deriving from four sources |
+| tile 255 handled only as a no-data cell | classified `available` **and** carrying the no-storage warning |
+
+**The amendment's premise checked out and then some.** C6's 67 would have written off the player's
+own animation frames, both bullet types, both plasma types, the explosion sequence and the teleport
+— and my own first pass at the corrected derivation reproduced two further versions of the same
+mistake (testing blankness against the remapped table; taking exclusive sentinels as tiles). All
+three are now checks that fail rather than notes that don't.
 
 **Deviation 4 — bash heredoc ate a backslash again** (`'\\'` → `'\'`), producing a Python
 `SyntaxError` for the third time across these dispatches. Routed around by writing the script to the
@@ -301,13 +382,34 @@ reassignment, no palette editing, nothing applied to the game.
 8. **I have not judged the tool's output appearance** and this report contains no such judgement
    (dispatch §7). Whether hand-editing through this interface actually reproduces the structure Jay
    found missing is exactly what his use of it will decide.
-9. **`build/c4/font-192.bin` lives under gitignored `build/`.** The tool seeds
+9. **My classification disagrees with C6-A1 §2 on 9 tiles, and I use mine** — as §4 of the
+   amendment directs (*"If your scan finds references the lists above miss, that is a better result,
+   not a discrepancy"*). `available` matches exactly at 15; `referenced` is 214 not 205 and
+   `no static reference` is 27 not 37, because 160/161/162, 249/250/251, 141/142 and 99 are all
+   reachable and each cites a source line (§4 AC7). **160-162 is the case C6-A1 itself predicted a
+   scan would miss** — mine catches it, which is some evidence the scan is working rather than that
+   it is over-reaching. Against that: **the extra nine come from three inference rules of mine**
+   (run-to-sentinel, cmp+inc, LDD low-byte), and a rule that infers is a rule that can over-infer.
+   The three sites I read by hand all confirmed, but I did not read all 32.
+10. **The `unverified` label is deliberately not "animation"** (C6-A1 §3). Door states, damage states
+    and the trash-compactor cycle would look identical to static analysis, and calling them frames
+    invites reasoning about them as frames.
+11. **A MAME trace would settle the 27 definitively** and is explicitly out of scope (C6-A1 §5) —
+    27 tiles of drawing is cheaper than the trace. Carried as a follow-up.
+12. **`build/c4/font-192.bin` lives under gitignored `build/`.** The tool seeds
    `assets/authored/font-a192.bin` from it, so a clean checkout has the tracked starting point — but
    regenerating the *source* still requires `python tools/ladder.py`. The app says so when the file
    is absent.
 
 ### 8 — Follow-up candidates
 
+- **Fix `assets/tileset.bin` to 2,816 bytes** (C6-A1 §7). One byte — `TILE_DATA_BR[255]`, value
+  `$20`. `$5D00` is `UNIT_TYPE`, so 2,816 fits exactly with no memory-map consequence. It is a
+  content change to a protected asset (§2B) and needs its own authorised task. **Until it lands,
+  tile 255's free slot cannot be spent**, and the editor says so.
+- **Settle the 27 `no static reference` tiles by MAME trace** — watch writes to `UNIT_TILE` and into
+  the map. C6-A1 §5 defers this deliberately (drawing them is cheaper), but it is the only thing
+  that converts them from inference to fact.
 - **Carried from C5, still open:** retune slots 2/11 (`$10`/`$12`, PETSCII-saturated) toward the
   art's `$14`/`$15`; green currently renders 0.00%. **This tool is where that would now be judged**,
   and it is free in slots.
@@ -325,7 +427,10 @@ reassignment, no palette editing, nothing applied to the game.
 
 ### 9 — User interaction during task
 
-One exchange. Jay: *"no don't use that tool its been significantly improved. use the pop tool in its
+Two. **DISPATCH C6-A1** arrived after C6 was committed, amending AC7 — applied to the tool and folded
+into §4/§6/§7 above rather than reported separately.
+
+And one exchange. Jay: *"no don't use that tool its been significantly improved. use the pop tool in its
 directory."* — redirecting me off `appleiitococo3` and onto
 `POP3_port/harness/tools/sprite_tool/`. Acted on immediately; the POP tool was read in full before
 any code was written, and §3 records what was taken from it. No other interaction.

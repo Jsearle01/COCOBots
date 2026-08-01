@@ -1,0 +1,15 @@
+available 15   referenced 214   no-static-reference 27   (total 256)
+blanks           : [0, 1, 2, 3, 14, 23, 175, 183, 238, 239, 243, 247, 252, 253, 254]
+available        : [1, 2, 3, 14, 23, 175, 183, 238, 239, 243, 247, 252, 253, 254, 255]
+no static ref    : [30, 69, 70, 73, 74, 77, 78, 84, 85, 86, 88, 89, 101, 102, 103, 146, 147, 150, 151, 152, 153, 156, 157, 172, 173, 181, 182]
+code refs (27)   : [96, 97, 98, 99, 100, 111, 115, 130, 131, 134, 140, 141, 142, 160, 161, 162, 164, 165, 240, 241, 244, 245, 246, 248, 249, 250, 251]
+
+blank (unplaced)       derived  14   C6-A1  14   exact match
+blank (all)            derived  15   C6-A1  15   exact match
+available              derived  15   C6-A1  15   exact match
+no-static-reference    derived  27   C6-A1  37   only-derived [] | only-A1 [99, 141, 142, 160, 161, 162, 249, 250, 251, 255]
+referenced             derived 214   (A1 quotes 205)
+  of which             derived 214   map-only 187, code-only 25, both 2
+code refs              derived  27   A1 lists 19   extra-found [99, 111, 131, 141, 142, 249, 250, 251] | not-found []
+
+-> docs/reports/C6-renders/tile-classification.json
