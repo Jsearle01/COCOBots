@@ -1,0 +1,20 @@
+# Local-only reference material — present on disk, never pushed (Jay, 2026-07-31)
+# NOTE: /reference/** (not /reference/) so git still descends and the MANIFEST
+# re-include below can fire. Verified with `git check-ignore -v`.
+/reference/**
+!/reference/pet/
+!/reference/pet/MANIFEST.md
+
+/docs/ground-truth/*
+!/docs/ground-truth/MANIFEST.md
+
+# Build products
+/build/
+/dist/
+*.bin.tmp
+*.lst
+*.dsk
+
+# Packaging artifacts — must never be committed
+/*.zip
+PLACEMENT.md

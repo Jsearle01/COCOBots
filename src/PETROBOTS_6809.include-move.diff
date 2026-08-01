@@ -1,0 +1,19 @@
+--- /mnt/project/PETROBOTS_6809.asm	1979-12-31 00:00:00.000000000 +0000
++++ cb3/PETROBOTS_6809.asm	2026-08-01 01:15:54.882516423 +0000
+@@ -4234,7 +4234,6 @@
+ ; LCB - probably move these to DP as well (shorter/faster)
+ 
+ 
+- ;INCLUDE PETSCII_COCO.asm
+  INCLUDE utils.asm
+  INCLUDE graphics.asm
+  INCLUDE BACKGROUND_TASKS_6809.ASM
+@@ -4310,6 +4309,7 @@
+ MED1D	.BYTE	$20,$E4,$E4,$E4,$E4,$20
+ 
+ 
++ INCLUDE PETSCII_COCO.asm
+ zprog
+ 
+   END START
+\ No newline at end of file
