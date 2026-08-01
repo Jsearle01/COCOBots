@@ -13,12 +13,20 @@ orders, each answering a different question:
              lowest score first — where C1 was least sure the sheet tile and the
              tileset tile are even the same thing. Drawing these blind risks
              drawing the wrong tile well.
-  live       every tile that appears in a level, index order.
+  unverified real artwork with no static reference (C6-A1) — the 27 tiles that
+             need drawing but that nothing in the map or a literal reaches.
+  available  the free slots. Not a chore list — this is where NEW content goes.
   all        all 256, index order.
 
-Dead tiles (67 of 256) are dropped from `worst`/`cleanup`/`live` by default —
-C6 §3 wants effort steered off them — but `all` keeps them so nothing is
-unreachable.
+**NOTHING IS EXCLUDED FROM ANY QUEUE** (C6-A1 §4). The earlier build dropped
+"dead" tiles from the work queues, which was wrong twice over: the 67 it called
+dead included explosion frames, bullets, the player's own animation and the
+teleport sequence, and the genuinely empty ones are free slots rather than
+waste. Jay, 2026-08-01: *"it would provide a tile that I could use to create
+something new if needed."*
+
+The ORDER still steers effort — `worst` first, `available` last — but every
+tile is reachable from every ordering.
 """
 import json
 
@@ -34,33 +42,35 @@ def _load(path):
 
 
 def build(mapping):
-    """-> {name: [tile, ...]} in priority order."""
-    dead = mapping.dead
-    live = [t for t in range(256) if t not in dead]
-
+    """-> {name: [tile, ...]} in priority order. Every queue reaches every tile
+    it is about; none of them silently drops one."""
     q = {}
 
+    # worst RMS first, then everything else in index order — so the ordering
+    # steers effort without the tail becoming unreachable.
     ladder = _load(C.LADDER_JSON) or {}
     worst = [r['tile'] for r in ladder.get('worst_tiles_221', [])]
-    q['worst'] = [t for t in worst if t not in dead] or list(live)
+    q['worst'] = worst + [t for t in range(256) if t not in set(worst)]
 
     corr = _load(C.CORRESPONDENCE) or {}
     rows = corr.get('rows', [])
-    cleanup = sorted((r for r in rows
-                      if r.get('confidence') != 'high' and r['tile'] not in dead),
-                     key=lambda r: (r.get('score') if r.get('score') is not None else 1.0))
-    q['cleanup'] = [r['tile'] for r in cleanup]
+    low = sorted((r for r in rows if r.get('confidence') != 'high'),
+                 key=lambda r: (r.get('score') if r.get('score') is not None else 1.0))
+    cleanup = [r['tile'] for r in low]
+    q['cleanup'] = cleanup + [t for t in range(256) if t not in set(cleanup)]
 
-    q['live'] = live
+    q['unverified'] = sorted(mapping.unverified)
+    q['available'] = sorted(mapping.available)
     q['all'] = list(range(256))
     return q
 
 
-ORDER = ('worst', 'cleanup', 'live', 'all')
+ORDER = ('worst', 'cleanup', 'unverified', 'available', 'all')
 
 DESC = {
-    'worst': 'worst RMS first (ladder.json worst_tiles_221)',
-    'cleanup': 'lowest-confidence correspondence first (C1)',
-    'live': 'tiles used by a level, index order',
-    'all': 'all 256 including the 67 dead',
+    'worst': 'worst RMS first (ladder.json worst_tiles_221), then the rest',
+    'cleanup': 'lowest-confidence correspondence first (C1), then the rest',
+    'unverified': 'real art, no static reference - draw normally (C6-A1)',
+    'available': 'FREE SLOTS for new content - empty and editable',
+    'all': 'all 256 in index order',
 }

@@ -41,7 +41,7 @@ def load_codes(path):
 
 class Mapping:
     """Cell codes plus the indexes the UI needs: which tiles a glyph touches,
-    which tiles are dead, and the per-tile glyph SET.
+    how each tile is classified, and the per-tile glyph SET.
 
     The glyph set matters because a tile may use the same glyph more than once
     (C6 §3) — editing one instance changes every instance, and showing nine
@@ -64,31 +64,21 @@ class Mapping:
                 self.tiles_of[g].add(t)
                 self.cells_of[g].append((t, k))
 
-        self.dead = self._load_dead()
+        # C6-A1: three categories, DERIVED. There is no "dead tile" concept —
+        # C6's original 67 counted only what a level designer placed and would
+        # have written off explosion frames, bullets, the player's animation and
+        # the teleport sequence. Nothing here is skippable; `available` means a
+        # free slot for new content, not wasted space.
+        import tileclass
+        self.cls = tileclass.classify()
+        self.kind = self.cls['kind']
+        self.available = set(self.cls['available'])
+        self.referenced = set(self.cls['referenced'])
+        self.unverified = set(self.cls['unverified'])
 
-    # ---- dead tiles ---------------------------------------------------------
-    @staticmethod
-    def _load_dead():
-        """Tiles that appear in none of the ten levels — 67 of 256 (C6 §3).
-
-        Taken from C1's `live` column rather than recomputed, so the editor and
-        the correspondence report cannot drift apart. Falls back to reading the
-        level files directly if the JSON is missing.
-        """
-        try:
-            with open(C.CORRESPONDENCE, encoding='utf-8') as f:
-                rows = json.load(f)['rows']
-            return {r['tile'] for r in rows if not r['live']}
-        except (OSError, KeyError, ValueError):
-            seen = set()
-            for ch in 'abcdefghij':
-                p = os.path.join(C.REPO, 'assets', 'levels', 'level_%s.bin' % ch)
-                if not os.path.exists(p):
-                    return set()
-                segs, _ = decbmerge.read_decb(p)
-                for _, blob in segs:
-                    seen.update(blob[:8192])
-            return set(range(256)) - seen
+    def tile_note(self, tile):
+        import tileclass
+        return tileclass.note(tile, self.cls)
 
     # ---- queries the UI asks -----------------------------------------------
     def tile_glyph_set(self, tile):
@@ -128,8 +118,11 @@ class Mapping:
                                                   self.n_cells(glyph))
         for w in self.warnings(glyph):
             s += '   ! ' + w
-        live = len([t for t in self.tiles_of.get(glyph, ()) if t not in self.dead])
-        s += '   (%d live)' % live
+        ts = self.tiles_of.get(glyph, ())
+        s += '   (%d referenced, %d unverified, %d available)' % (
+            len([t for t in ts if t in self.referenced]),
+            len([t for t in ts if t in self.unverified]),
+            len([t for t in ts if t in self.available]))
         return s
 
     def used_glyphs(self):

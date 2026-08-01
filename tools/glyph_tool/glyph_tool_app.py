@@ -52,9 +52,13 @@ ARM = '#FFE400'                       # armed-swatch highlight border (POP's con
 OK, STOP, INFO, IDLE = '#1b7f1b', '#b02020', '#666666', '#444444'
 STATE_BG = {P.UNTOUCHED: '#555555', P.EDITED: '#8a6d00', P.DONE: '#1b7f1b'}
 
-DEAD_MARK = '#ff00ff'
+AVAIL_MARK = '#00ff88'        # available — a free slot, marked invitingly
+UNVERIFIED_MARK = '#ffaa00'   # no static reference — drawn normally
 AFFECTED = '#00e0ff'
 SELECTED = '#ffe400'
+
+CLS_BG = {'available': '#0b6b3a', 'referenced': '#3a3a3a',
+          'no-static-reference': '#8a5a00'}
 
 # Fixed geometry, sized against a 1536x864 display. The two zooms the dispatch
 # asks for (glyph, sheet) are live; the comparison pair is fixed at 3x because a
@@ -109,9 +113,12 @@ def main():
         from PIL import ImageTk
     except Exception as e:                                    # noqa: BLE001
         print('GUI needs Tkinter + Pillow on a machine with a display: %s' % e)
-        print('(headless: config %s, %d glyphs, %d used, %d dead tiles — the '
-              'model loads; run on your desktop for the UI.)'
-              % (cfg.name, cfg.n_glyphs, len(mapping.used_glyphs()), len(mapping.dead)))
+        c = mapping.cls['counts']
+        print('(headless: config %s, %d glyphs, %d used; tiles %d available / '
+              '%d referenced / %d no-static-reference — the model loads; run on '
+              'your desktop for the UI.)'
+              % (cfg.name, cfg.n_glyphs, len(mapping.used_glyphs()),
+                 c['available'], c['referenced'], c['unverified']))
         return
 
     root = tk.Tk()
@@ -166,6 +173,14 @@ def main():
     tk.Button(selbar, text='>|', width=3, command=lambda: step_queue(+1)).pack(side='left')
     qlabel = tk.Label(selbar, text='', font=('Consolas', 9), width=44, anchor='w')
     qlabel.pack(side='left', padx=6)
+
+    # The tile's classification, always visible and colour-coded. It carries the
+    # tile-255 storage warning, which is the one case where a free slot is not
+    # yet safe to spend (C6-A1 §2a).
+    tilenote = tk.Label(root, text='', anchor='w', font=('Consolas', 9, 'bold'),
+                        fg='white', bg=CLS_BG['referenced'], padx=8, pady=3,
+                        justify='left', wraplength=1500)
+    tilenote.pack(fill='x')
 
     body = tk.Frame(root)
     body.pack(fill='both', expand=True)
@@ -282,13 +297,25 @@ def main():
         sheetc.create_image(0, 0, anchor='nw', image=p)
         sheetc.config(scrollregion=(0, 0, S.GRID * z, S.GRID * z))
 
-        # dead tiles (67 of 256) — a dim diagonal so effort is not spent on them
-        for t in mapping.dead:
+        # C6-A1 classification. NOTHING here means "skip this".
+        #   available  a green corner tick — an EMPTY, EDITABLE slot for new
+        #              content. Jay: "it would provide a tile that I could use to
+        #              create something new if needed." Deliberately an inviting
+        #              mark, not the greyed-out cross an earlier build drew.
+        #   unverified a small amber dot — real artwork reached by a computed
+        #              offset. Drawn and edited exactly like any other tile.
+        for t in mapping.available:
             x, y, w, h = S.tile_rect(t)
-            sheetc.create_line(x * z, y * z, (x + w) * z - 1, (y + h) * z - 1,
-                               fill=DEAD_MARK, width=1, tags='dead')
-            sheetc.create_line(x * z, (y + h) * z - 1, (x + w) * z - 1, y * z,
-                               fill=DEAD_MARK, width=1, tags='dead')
+            sheetc.create_line(x * z, (y + 6) * z, x * z, y * z,
+                               fill=AVAIL_MARK, width=2, tags='cls')
+            sheetc.create_line(x * z, y * z, (x + 6) * z, y * z,
+                               fill=AVAIL_MARK, width=2, tags='cls')
+        for t in mapping.unverified:
+            x, y, w, h = S.tile_rect(t)
+            r = max(1, z)
+            sheetc.create_oval((x + w - 4) * z - r, (y + h - 4) * z - r,
+                               (x + w - 4) * z + r, (y + h - 4) * z + r,
+                               fill=UNVERIFIED_MARK, outline='', tags='cls')
 
         # affected tiles — OUTLINES ON THE SHEET, not a strip (C6 §3)
         g = glyph()
@@ -391,9 +418,16 @@ def main():
         else:
             s = prog.state(g, fe)
             statechip.config(text=s.upper(), bg=STATE_BG[s])
+        c = mapping.cls['counts']
         reflabel.config(text='SHEET — click a tile (sub-cell) to load.  %s   '
-                             'cyan = tiles using this glyph, magenta X = dead (%d)'
-                             % (S.Reference.LABELS[st['view']], len(mapping.dead)))
+                             'cyan = tiles using this glyph   '
+                             'green tick = available/free (%d)   '
+                             'amber dot = no static reference (%d)   '
+                             'referenced (%d)'
+                             % (S.Reference.LABELS[st['view']], c['available'],
+                                c['unverified'], c['referenced']))
+        tilenote.config(text='tile $%02X  %s' % (st['tile'], mapping.tile_note(st['tile'])),
+                        bg=CLS_BG[mapping.kind[st['tile']]])
         ql = qs[st['queue']]
         qlabel.config(text='%s: %d/%d  (%s)'
                            % (st['queue'], st['qi'] + 1 if ql else 0, len(ql),
@@ -470,7 +504,7 @@ def main():
         coord.config(text='sheet (%3d,%3d)  tile $%02X %s  glyph %s%s'
                           % (x, y, t, PLANES[k],
                              'none' if g is None else '$%02X' % g,
-                             '  DEAD' if t in mapping.dead else ''))
+                             '  ' + mapping.kind[t]))
 
     # ---------------------------------------------------------------- paint --
     def canvas_to_glyph(e):

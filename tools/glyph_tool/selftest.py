@@ -16,7 +16,8 @@ it was considered:
   crop not resize   the 384 grid is the source's first 384 px, unscaled (§8)
   affected tiles    $3A / $4D / a single-tile glyph, against tileset.bin (AC6)
   text/UI warnings  all 15 shared glyphs + the $66 health-bar case (AC6)
-  dead tiles        67 of 256 (AC7)
+  classification    available 15 / referenced 214 / no-static-ref 27,
+                    derived and reconciled against C6-A1 (AC7 amended)
   no data           tile 255 BR is None, never glyph $00 (§8)
   bit-7 semantics   the two configurations disagree and both are read correctly
   assets untouched  tileset.bin / levels / graphics.asm / PETSCII_COCO.asm
@@ -39,7 +40,8 @@ import progress as P        # noqa: E402
 import render as R          # noqa: E402
 import sheet as S           # noqa: E402
 from edit_model import FontEdit    # noqa: E402
-from tilemap import Mapping        # noqa: E402
+import queues                      # noqa: E402
+from tilemap import Mapping, load_codes   # noqa: E402
 
 FAILS = []
 LINES = []
@@ -188,9 +190,78 @@ def t_warnings():
 
 
 # ------------------------------------------------------------ AC7 / §8 ------
-def t_dead():
+def t_classification():
+    """AC7 as amended by C6-A1. The classification is DERIVED; C6-A1 §2's lists
+    are used only to reconcile, never to produce it."""
+    import tileclass as TC
+    cls = TC.classify()
+    c = cls['counts']
+    check('class: partitions all 256', sum(c.values()) == 256
+          and not (set(cls['available']) & set(cls['referenced']))
+          and not (set(cls['available']) & set(cls['unverified']))
+          and not (set(cls['referenced']) & set(cls['unverified'])),
+          'available %d + referenced %d + no-static-ref %d'
+          % (c['available'], c['referenced'], c['unverified']))
+
+    check('class: available matches C6-A1 (15)',
+          set(cls['available']) == set(TC.A1_BLANK) | {255},
+          '14 blanks + tile 255')
+
+    # blankness MUST come from assets/tileset.bin — the a192 table remaps $20 to
+    # $35 and testing it finds zero blanks, silently reclassifying all fourteen
+    a192_codes = load_codes(C.CONFIGS['a192'].tileset)
+    check('class: blankness ignores the remapped table',
+          all(a192_codes[t][0] != 0x20 for t in TC.A1_BLANK)
+          and set(TC.blank_tiles()) >= set(TC.A1_BLANK),
+          'derived from assets/tileset.bin, not the a192 allocation')
+
+    # a blank tile that IS placed is not free — tile 0 is the empty floor
+    check('class: placed blank is not available',
+          0 in cls['blanks'] and 0 not in cls['available']
+          and 0 in cls['referenced'], 'tile 0 is all-$20 and in every level')
+
+    # the units C6's "67 dead" would have thrown away
+    units = [96, 97, 98, 100, 115, 140, 164, 165, 240, 241, 244, 245, 246, 248]
+    missing = [t for t in units if t not in cls['code_refs']]
+    check('class: code-placed units all found', not missing,
+          'player, hoverbot, rollerbot, bullets, plasma, explosions')
+
+    # the computed case a literal scan cannot see
+    check('class: DEMATERIALIZE 160/161/162 found',
+          all(t in cls['code_refs'] for t in (160, 161, 162)),
+          'ADDB #160 at PETROBOTS_6809.asm:2986')
+
+    # the two exclusive sentinels that must NOT become tiles
+    check('class: run sentinels are not tiles',
+          143 not in cls['code_refs'] and 252 not in cls['code_refs']
+          and 252 in cls['available'],
+          'CMPA #143 bounds 140-142; CMPA #252 bounds 246-251')
+    check('class: sentinel runs are filled',
+          all(t in cls['code_refs'] for t in (141, 142, 249, 250, 251)),
+          '140-142 water droid, 246-251 explosion')
+
+    # the false positive a naive backtrack produces
+    check('class: timer reload is not a tile', 3 not in cls['code_refs']
+          and 3 in cls['available'],
+          'LDA #3 at BACKGROUND_TASKS:2264 sets UNIT_TIMER_B')
+
+    # every code ref must cite a source line
+    cited = {t for r in cls['evidence'] for t in r['tiles']}
+    check('class: every code ref is cited', set(cls['code_refs']) <= cited,
+          '%d evidence rows' % len(cls['evidence']))
+
+    check('class: no-static-reference are drawn, not skipped',
+          set(cls['unverified']).isdisjoint(cls['available']),
+          '%d tiles marked unverified' % c['unverified'])
+
     m = Mapping(C.CONFIGS['a192'])
-    check('dead tiles: 67 of 256', len(m.dead) == 67, sorted(m.dead)[:6])
+    qs = queues.build(m)
+    check('class: no queue drops a tile',
+          all(set(qs[n]) == set(range(256)) for n in ('worst', 'cleanup', 'all')),
+          'worst/cleanup/all each reach all 256')
+    check('class: tile 255 warns about storage',
+          'NO STORAGE' in m.tile_note(255) and 255 in cls['available'],
+          'available, but not spendable until tileset.bin is 2,816 bytes')
 
 
 def t_nodata():
@@ -318,7 +389,7 @@ def t_assets_untouched():
 
 def main():
     for fn in (t_roundtrip, t_nibble_order, t_subcell, t_crop, t_affected,
-               t_warnings, t_dead, t_nodata, t_bit7, t_paint, t_palette,
+               t_warnings, t_classification, t_nodata, t_bit7, t_paint, t_palette,
                t_assets_untouched):
         try:
             fn()
