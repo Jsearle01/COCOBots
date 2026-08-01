@@ -90,10 +90,16 @@ What hand-editing needs, and none of it exists yet:
 
 ---
 
-## 3d. Can the palette be re-derived more colourfully now? Measured: no
+## 3d. Can the palette be re-derived more colourfully now? Yes — but not for the reason asked
 
 **Jay asked, 2026-08-01:** *"now that we have a non-inverse path can we re-derive a more colorful
-palette."* Measured rather than assumed, and the answer is no — for three reasons that compound.
+palette."*
+
+**Short answer: removing inverse buys nothing here — but the palette IS missing colours, and it can
+be fixed almost for free.** Jay saw it before the measurement did: *"you told me the coco render is
+as colorful as the amiga art. that isn't true i cn see colors missing."* He was right and the claim
+was wrong. The three sections below are in the order they were established; **§3d-4 is the finding
+that matters.**
 
 **The palette was never constrained by inverse.** C2 chose the 16 by `--objective floor`: minimise
 per-pixel quantisation error of the artwork, with no glyph model in the loop. The complement pairing
@@ -132,13 +138,62 @@ lands in slots the art never selects.
 source's own colourfulness (44.7 of 50.5) and within 1.3 points on grey share (56.9% vs 58.2%). A
 palette cannot put colour on screen that the source does not contain.
 
-**Which points straight back at §3c.** Hand-editing is the one lever that *can* exceed the source,
-because a person can choose colours the Amiga art never had. The automated pipeline is bounded by
-the artwork; the hand pass is not. **If "more colourful" is the goal, it is an art decision, not a
-derivation.**
-
 Visual: [`../reports/C5-renders/palette-variants.png`](../reports/C5-renders/palette-variants.png)
 — source, baseline, re-derived and chroma×8, all at 221 glyphs, with each palette's swatch strip.
+
+### 3d-4. The real defect: whole hues are absent, and mean chroma cannot see it
+
+**Everything above measures colourfulness as MAGNITUDE — mean chroma. That is blind to hue
+VARIETY.** A palette scoring well on it can contain two hues. Jay's objection was about *which*
+colours, not how saturated they are, and the aggregate could not answer it. Measured properly:
+
+| hue band | art pixels | baseline slots | |
+|---|---:|---:|---|
+| grey | 58.21% | 4 | |
+| red | 3.65% | 1 | |
+| orange | 5.85% | 1 | |
+| yellow/olive | 5.31% | 3 | |
+| **green** | **1.29%** | **0** | ← absent |
+| cyan/teal | 6.39% | 2 | |
+| blue | 18.86% | **5** | |
+| **magenta** | **0.44%** | **0** | ← absent |
+
+**Five slots on blue, none on green or magenta.** 30 of the art's 46 colours are displaced by more
+than 60 RGB units, and the displacements cross hue boundaries: red → olive, green → olive, green →
+yellow, magenta → blue. Those are the missing colours.
+
+**This is a hazard C2's own dispatch named and I then ignored** — *"Frequency is not importance. A
+colour at 1% that distinguishes two otherwise-identical tiles may matter more. Say how you handled
+this."* Frequency-weighted squared error will always starve a 1.3% hue in favour of an 18.9% one,
+because it cannot represent that a hue vanishing is more visible than a shade shifting.
+
+**The fix costs almost nothing.** Reserve one slot per hue band the art uses above 0.2% of pixels,
+then minimise error subject to that (`tools/repalette.py --hue-coverage`):
+
+```
+baseline  $22 $31 $1C $06 $39 $0E $08 $07 $00 $0A $23 $30 $38 $03 $01 $3F   err 83.28
+covered   $00 $3F $0E $1C $15 $2A $22 $23 $06 $07 $38 $03 $35 $01 $0A $30   err 83.34
+                          ^$15 green   ^$2A magenta
+```
+
+| | baseline | hue-covered |
+|---|---:|---:|
+| error | 83.28 | **83.34** (+0.06) |
+| blue slots | 5 | 3 |
+| green slots | **0** | **1** |
+| magenta slots | **0** | **1** |
+| green pixels rendered | **0.00%** | **0.74%** |
+| magenta pixels rendered | **0.00%** | **0.15%** |
+
+**+0.06 of error — a fiftieth of the 3.71 gap Jay judged invisible.** It buys green and magenta by
+taking two slots off blue.
+
+Visual: [`../reports/C5-renders/hue-coverage.png`](../reports/C5-renders/hue-coverage.png) — source,
+baseline, hue-covered, all at 221 glyphs. **Not adopted; Jay's call.**
+
+**And §3c still stands.** Hand-editing remains the one lever that can exceed the source, because a
+person can choose colours the Amiga art never had. But the palette had a real, fixable defect, and
+"the render is as colourful as the art" was a wrong claim built on the wrong statistic.
 
 ---
 
