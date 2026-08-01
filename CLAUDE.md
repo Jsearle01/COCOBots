@@ -34,7 +34,9 @@ defects.** Sections marked **⛔ OPEN** are unresolved bindings that must be set
   The disk/bootloader path is explicitly deferred (§2H). **Poke-path results do not gate delivery** and
   must never be reported as if they do.
 - **Repo:** `github.com/Jsearle01/COCOBots`. This is the tree Clyde works in.
-- **⛔ OPEN — candidate pool path** (§2C). Not set.
+- **Candidate pool:** `seeds/cocobots/live/` in `github.com/Jsearle01/methodology-candidate-pool` (§2C). CLOSED.
+- **Reports live at `docs/reports/<dispatch-id>-<slug>.md`, on `wip`.** Established A1, confirmed
+  by Jay 2026-08-01. See §7 — this is now standing, not per-dispatch.
 - **CALIBRATION-LIGHT (inherited deviation from v0.7):** no dual-band prediction, no elapsed-time
   calibration block. The C-35 *receipt stamp* (t0 + HEAD) IS kept as provenance. See §5, §7.
 
@@ -155,7 +157,8 @@ before overwriting.** When the catalog changes, update it and surface it in the 
 
 Candidates go to the **shared cross-project pool**, a SEPARATE repo — never inside this project's repo.
 
-- **⛔ OPEN — pool path not set for this project.** Do not capture until Jay sets it.
+- **Pool: `github.com/Jsearle01/methodology-candidate-pool`, directory `seeds/cocobots/live/`.**
+  Established and working 2026-08-01 (first capture: pool commit `2b561d9`). Binding CLOSED.
 - **Capture at the FIRST instance** as a NEW row. **New rows only — NEVER read or edit existing entries**
   (folding is the reconciler's read-time job).
 - **Row schema is frozen in the pool's root `SCHEMA.md`.** Two load-bearing constraints: `instance_count`
@@ -565,6 +568,9 @@ executing a spatial correction.
   frame-by-frame. A settled framebuffer and a correct duration are BOTH satisfied by a faithful-looking
   static pause.
 - **Report the path**, e.g. `25.3: PASSED — Jay, poke, RGB (does not gate delivery — §2H)`.
+- **A STATIC-CAPTURE MEASUREMENT IS NOT A FINDING** (Jay, 2026-08-01). Behavioural claims come from
+  a live run, not from comparing stills. Captures may be recorded as measurements and surfaced for
+  Jay (§3), but **must not be raised as defects, nor carried forward as open flags**, on their own.
 
 ---
 
@@ -586,7 +592,28 @@ Calibration-light (§1). The C-35 **receipt stamp** is kept as provenance; the e
 
 ---
 
-## 7. Form B Report Structure
+## 7. Form B Report Structure — and where it goes
+
+### Delivery (standing convention, established A1, confirmed by Jay 2026-08-01)
+
+**Every dispatch writes its Form B report to `docs/reports/<dispatch-id>-<slug>.md` and pushes it
+on `wip`.** This is no longer something a dispatch has to ask for; it is the default, and a
+dispatch that omits mention of it still requires it.
+
+- **Path:** `docs/reports/`. Tracked. Distinct from `docs/project/` (authored authoritative docs,
+  §2D) — reports accumulate per dispatch and must not crowd them.
+- **Filename:** `<dispatch-id>-<slug>.md`, e.g. `A1-repo-setup.md`. Sorts by dispatch ID, which is
+  the project's index — **not** by date.
+- **Branch: `wip` only.** Reports are in-flight artifacts. Do NOT put them on `main` unless the
+  Orchestrator promotes them; `main` is pinned to a verified tree and a report is an extra file.
+- **Commit the report SEPARATELY from the dispatch's own commit.** The dispatch commit must remain
+  exactly what the ACs were verified against. A report folded into it changes what was verified.
+- **Push before reporting** (§2E). The report file on `wip` IS the delivery; the chat message is a
+  pointer to it, not the artifact.
+- A commit cannot contain its own SHA, so the report's own commit SHA goes in the delivering
+  message, not in §11.
+
+### Structure
 
 ```
 ## Form B Report — <stage/recon name> — <one-line scope>
@@ -661,7 +688,18 @@ else's near-complete code is different: a refactor that breaks something already
 - **The port's oddities are authored decisions until Jay says otherwise** (§2). The code is Jay's and
   L. Curtis Boyle's; the comments record real reasoning. **Jay's half is askable — so ask, don't infer.**
   Curtis's half may not be: treat an un-askable decision as unknown-and-preserved, never as a defect.
-- Known-and-tolerated as of 2026-07-31, **do not "fix" without a task**: mixed line endings in
-  `BACKGROUND_TASKS_6809.asm` (12 bare CRs — lwasm handles them correctly, a different assembler may not);
+- **The 12 bare CRs in `BACKGROUND_TASKS_6809.ASM` are ARMOUR, not fragility** (A1b, verified
+  2026-08-01). A lone CR flips git's text/binary heuristic to binary, and binary content is never
+  EOL-converted — so that file was the one source `core.autocrlf` could never have damaged. The
+  files actually at risk were `PETROBOTS_6809.asm` and `PETSCII_COCO.asm`, both of which WOULD have
+  been normalised by any commit from an `autocrlf=true` clone before `.gitattributes` (`* -text`)
+  was added. **Do not repeat the "the bare CRs are most likely to be destroyed" framing — it is
+  backwards.** They still must not be "fixed": lwasm treats them as line terminators, and a
+  different assembler may not.
+- **`.gitattributes` (`* -text`) governs FUTURE conversions only.** It freezes damage rather than
+  repairing it. Blobs verified undamaged as of 2026-08-01; a pinned-digest check on the three
+  sources would catch a regression `.gitattributes` cannot prevent (deliberate rewrite, bad merge,
+  an editor stripping CRs).
+- Known-and-tolerated as of 2026-07-31, **do not "fix" without a task**:
   direct-page `.BYTE` initializers that `INTRO` immediately zeroes; the stale `$FF99` comment in
   `graphics.asm` describing 4-colour mode.
