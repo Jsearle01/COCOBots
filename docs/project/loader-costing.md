@@ -43,19 +43,22 @@ usable, and idioms §14e's "no `$0100` segment in a `LOADM`'d binary" stops appl
 
 ---
 
-## 3. The disk primitive — ~310 bytes
+## 3. The disk primitive — 301 bytes, measured
 
-`POP3_port/src/hal/coco3-dsk/disk_read.s`, assembled, from that project's own linker map:
+**Assembled directly with `lwasm`** rather than inferred from POP3_port's linker map:
 
 ```
-$7C03  disk_read_init          $7CC4  dr_read_track_m1      whole-track multi-sector read
-$7C22  disk_read               $7D0C  dr_wait_notbusy
-$7C7E  disk_read_range         $7D1C  dr_settle
-                               $7D24  dr_spinup
+$ lwasm --format=raw --output=dr.bin disk_read.s
+  301 bytes            code, $0000-$012C, last instruction rts at $012C
 ```
 
-`$7C03` to roughly `$7D35` — **about 310 bytes of code**, with its variables at a separate
-`DR_VARBASE` (idioms §25 — and note that flag takes a C literal, so `$1F00` silently defines zero).
+Its variables sit at a separate `DR_VARBASE` and are `equ` offsets, not part of those 301 bytes —
+**7 bytes** in total: `dr_track`, `dr_sector`, `dr_dest` (2), `dr_status`, `dr_r_track`,
+`dr_r_count`. (idioms §25: `-DDR_VARBASE` takes a C literal, so `$1F00` silently defines zero.)
+
+**Primitive total: 308 bytes.** And since karateka's `bootloader.bin` is 403 bytes and `include`s
+this file, **the boot-stub logic alone is 102 bytes** — which runs from framebuffer space and
+therefore costs no low RAM at all.
 
 It talks to the WD1773 directly (`$FF40`, `$FF48-$FF4B`), so it does not need DECB ROM mapped in.
 It does need the **force-slow → do-I/O → restore-speed** wrapper (idioms §8), and `utils.asm`
@@ -99,18 +102,28 @@ whatever shipped in the binary. A2's live run confirmed the menu path reaches it
 
 **So closing the feature needs, beyond the loader itself:**
 
-| item | est. | note |
+| item | bytes | basis |
 |---|---:|---|
-| adapt `disk_read.s` + wrapper | ~340 B | copy-and-adapt, proven code |
-| `TILE_LOAD_ROUTINE` | ~40 B | set track/dest/count, call, check `dr_status` |
-| `MAP_LOAD_ROUTINE` | ~40 B | same shape |
-| file location — DECB directory walk **or** fixed raw tracks | ~40 B | see §7 |
-| `DISPLAY_LOAD_MESSAGE1/2` | ~20 B | text already renders |
-| wire into `INIT_GAME` + `CYCLE_MAP` | ~10 B | uncomment + a call |
-| | **~490 B** | |
+| disk primitive, code | **301** | **measured** — assembled with `lwasm` |
+| disk primitive, variables | **7** | **measured** — `equ` offsets from `DR_VARBASE` |
+| force-slow / restore wrapper | ~25 | estimated; `utils.asm` already has `slow`/`fast`, `romson`/`romsoff` |
+| `TILE_LOAD_ROUTINE` | ~25 | estimated; set track/dest/count, call, check `dr_status` |
+| `MAP_LOAD_ROUTINE` | ~25 | estimated; same shape |
+| `DISPLAY_LOAD_MESSAGE1/2` | ~40 | estimated; text already renders through `BITMAP_PLOTTER` |
+| **file location** — fixed raw tracks | ~15 | estimated; karateka's route |
+| **file location** — DECB directory walk | ~200 | estimated; read dir, match name, follow granule chain |
 
-Against the **475 bytes** free at `$7E25-$7FFF` in the 256-glyph layout, that is **~15 bytes over**.
-Workable, but it is not a layout with room in it — see §6.
+**Totals, resident in low RAM:**
+
+| | bytes | against 1,597 free at 221 + bootloader |
+|---|---:|---:|
+| **with fixed raw tracks** | **438** | 1,159 left |
+| with a DECB directory walk | 623 | 974 left |
+
+**308 of that is measured; the rest is estimated**, and the file-location choice moves it by 185.
+
+The boot stub is separate and free: 102 bytes of stub logic plus the 301-byte primitive, running from
+`$8000+` framebuffer space which is dead until the game draws.
 
 ---
 
