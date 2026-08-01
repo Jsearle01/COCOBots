@@ -40,7 +40,13 @@ Added, tracked: `tools/ladder.py`, and this report.
 **No file modified.** `PETROBOTS_6809.asm`, `graphics.asm`, `PETSCII_COCO.asm`, `tileset.bin`,
 `palette.json` and all ten level files hash identical to `HEAD` (§5).
 
-Under `build/c4/` — gitignored, regenerable by `python tools/ladder.py --out build/c4`:
+**Tracked, on the remote**, under [`docs/reports/C4-renders/`](C4-renders/) — `ladder.png`,
+`worst-tiles.png`, the four `render-*.png`, and `ladder.json`. Committed after delivery because Jay
+could not find them: they were written to `build/c4/`, which is gitignored, so they never reached
+the remote. **Third occurrence** of a problem first raised as A2 §7 flag 4 and carried forward
+unfixed through C2 and C3 (§7 flag 7).
+
+Also under `build/c4/` — gitignored, regenerable by `python tools/ladder.py --out build/c4`:
 
 | artifact | |
 |---|---|
@@ -218,6 +224,14 @@ regeneration.
 6. **`worst-tiles.png` shows 24×24 tiles at ×4.** Large enough to compare shapes; whether it is
    large enough to judge is Jay's call, and the full-resolution panels are there for closer looking.
 
+7. **The renders were delivered to a location Jay could not reach, and this was the third time.**
+   `build/` is gitignored, so nothing under it is on the remote or in any clone. A2 §7 flag 4 raised
+   it, C2 and C3 carried it forward, and C4 repeated it — while the dispatch explicitly made these
+   renders blocking. **A flag raised four times is a decision not being taken, not a flag.** Now
+   taken: artifacts a dispatch exists to put in front of Jay are tracked under
+   `docs/reports/<dispatch>-renders/`; throwaway intermediates stay in `build/`. 944 KB for the
+   seven C4 files. **This closes A2 §7 flag 4.**
+
 ### 8 — Follow-up candidates
 
 - **The decision this dispatch exists to support**: 128 / 192 / 221 / 256, and whether the
@@ -225,14 +239,21 @@ regeneration.
 - **Five tiles are worst-at-221 but absent from C1's cleanup queue** — 114, 132, 156, 212, 251. Worth
   adding, since C1's queue was built from correspondence confidence and this is colour residual;
   they are different failure modes and the union is the real queue.
+- **Fold the render-location convention into CLAUDE.md §7** alongside the report convention — §2D,
+  Orchestrator's. It is now settled in practice (§7 flag 7) but only recorded here.
 - Carried, unchanged: replacements for the four direct-framebuffer inverses (C3 §7 flag 5, unavoidable
   under every option); correct CLAUDE.md §2L (C3 §7 flag 9); the level file-location scheme; the
-  pinned-digest check (A1b §8); the three MAME idioms (A2 §10). `main` is at `a62809e`, **eleven
-  dispatches behind**.
+  pinned-digest check (A1b §8); the three MAME idioms (A2 §10). **A2 §7 flag 4 is CLOSED** by §7
+  flag 7 above. `main` is at `a62809e`, **eleven dispatches behind**.
 
 ### 9 — User interaction during task
 
-None. The dispatch was self-contained. Every judgment call is in §7.
+None during the dispatch itself; it was self-contained, and every judgment call is in §7.
+
+**One exchange after delivery:** *"there is no bild/c4"* — the directory existed with all fifteen
+files, but `build/` is gitignored so it was invisible from the remote and from any clone. Correct
+report of a real problem on my side. Fixed by tracking the renders under
+`docs/reports/C4-renders/` (§7 flag 7), which closes a flag open since A2.
 
 ### 10 — Candidate(s) captured this task
 
