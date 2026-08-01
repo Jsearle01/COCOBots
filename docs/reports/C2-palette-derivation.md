@@ -1,318 +1,370 @@
 # Form B Report — C2 — derive the CoCo3 palette from the Amiga artwork
 
-**Class:** recon. `wip`, pushed before reporting. **No 25.3 gate** — nothing visible changed; the
-render is surfaced for Jay, not gated, and a still does not raise findings on its own (§4).
-**No shipped asset modified**, verified by hash.
+**Class:** recon. `wip`, pushed before reporting. **No 25.3 gate** — nothing visible changed in the
+port; the renders are surfaced for Jay, not gated. **No shipped asset modified**, verified by hash.
+
+> **This report was rewritten after delivery.** The first C2 derivation modelled each 8×8 cell as
+> one ink colour plus one paper colour. **Jay corrected it: glyphs are 16-colour capable.** He was
+> right, and everything downstream of that assumption was re-derived. The superseded figures are
+> retained where they explain the correction, and are marked.
 
 ### 0 — Receipt / status (C-35 stamp)
 
 t0 = 2026-08-01, dispatch C2 received. HEAD at receipt `23c23e0` (`wip`), tree clean. C1's
-deliverable commit `73aadcd` present and used as the input.
+deliverable commit `73aadcd` present and used as the input. Work continued across four follow-up
+exchanges with Jay (§9); HEAD at this report `8735598`.
 
 ### 1 — Summary
 
-**Proposed palette, in slot order:**
+**Proposed palette, slot order:**
 
 ```
-$00 $07 $0A $3F $0E $22 $03 $30 $3C $23 $39 $1C $06 $01 $38 $00
+$22 $31 $1C $06 $39 $0E $08 $07 $00 $0A $23 $30 $38 $03 $01 $3F
 ```
 
-15 distinct colours; `$00` deliberately occupies slots 0 **and** 15. Weighted mean error **2.093**,
-complement demand satisfied 19.2%, normal survival **34.2%**, inverse survival **25.9%**, ordering
-efficiency **75.6%**.
+16 distinct colours. Mean per-pixel error at the palette floor **4.58**, against the §2M first
+cut's 6.5.
 
-**Three findings matter more than the sixteen values, and two of them change what C3 should do.**
+**The dispatch asked which 16 colours and in what order. The answer to both is now settled and
+neither turns out to be where the difficulty is.**
 
-1. **The inverse bit in this tileset is a shape-doubling device, not a colour-inversion device.**
-   19.3% of complement demand asks a colour to be its **own** complement — the art wants the *same*
-   colours whether a glyph is drawn normally or inverted. Under a monochrome font, inverse video
-   buys a second shape free; under a coloured font that same trick imposes a colour constraint.
-   This is why `$00` is self-paired.
+| what each constraint costs | error | added |
+|---|---:|---:|
+| palette quantisation alone (the floor) | 20.40 | — |
+| + one pattern per glyph (§2M invariant 1) | 95.08 | **+74.67** |
+| + inverse forced through 15−*i* (the ordering) | 98.75 | **+3.67** |
 
-2. **AC5's central number is not scale-free.** A **1-colour palette scores 100%** inverse survival.
-   Ranked by the raw fraction, the best design is the one that discards all colour. The meaningful
-   figure is inverse survival **relative to normal survival at the same palette** — normal cells
-   carry no complement constraint, so their rate is the ceiling every other loss imposes.
+**The slot ordering — §2M invariant 4's central warning, and most of this dispatch's stated
+work — costs 3.67 of a 98.75 residual.** One-glyph-one-pattern costs twenty times more.
 
-3. **Read that way, the ordering is not the dominant loss.** Normal cells survive at only 34.2%, so
-   the ordering costs ~8 points and **§2M invariant 1 (one glyph, one colour) costs ~66**. That
-   makes §2M's "optional second pass" — glyph splitting — **the main lever for C3**, and it is
-   bounded: 3 variants per glyph consumes 122 of 128 slots and caps satisfaction near 65%.
+**Jay's visual verdict on the delivered render (2026-08-01): "much better but still not great."**
+That is the authority (§3), and it is corroborated by measurement rather than contradicted: the
+best allocation reachable is **100.85** against a ceiling of **25.31**.
 
-AC9's `CLAUDE.md` edit was applied and committed separately, first.
+**And slots are not the lever.** Measured across the whole budget range:
 
-### 2 — Files modified
+| extra glyph slots | total slots | error | |
+|---:|---:|---:|---|
+| 0 | 69 | 113.64 | |
+| **11** | **80** | **100.85** | **shipped — the provably safe band** |
+| 18 | 87 | 97.49 | + the `$40-$5F` graphics band |
+| 59 | 128 | 86.79 | **every free slot, i.e. text font destroyed** |
+| — | 2,303 | **25.31** | ceiling: every cell its own glyph |
 
-Nothing modified. Added, tracked:
+Spending *every* free slot and destroying text rendering buys 100.85 → 86.79, a 14% improvement,
+and still sits 3.4× above the ceiling. **The binding constraint is that ~2,300 cells of Amiga
+artwork must be served by at most 128 glyph patterns — roughly 18:1 compression.** No allocation
+strategy fixes that. §8 sets out what would.
 
-| file | what |
+### 2 — Files
+
+| file | state |
 |---|---|
-| `assets/palette.json` | 16 slots in order, per-slot provenance, complement pairing with evidence, 117 inverse-failure tiles |
-| `docs/project/palette.md` | proposal, derivation, frontier, control, limits |
-| `tools/palettederive.py` | reproduces all of it |
+| `assets/palette.json` | re-derived under the correct model |
+| `docs/project/palette.md` | re-derived; carries the supersession note |
+| `tools/palettederive.py` | rewritten around the 16-colour glyph model |
+| `tools/fontbuild.py` | **new** — font + tileset remap, at Jay's request (§9) |
+
+Build products, gitignored: `build/c2/palette-preview.png`, `build/c3/font-colour.{bin,asm}`,
+`build/c3/tileset-remapped.bin`, `build/c3/font-comparison.png`.
 
 Separately, per AC9: `CLAUDE.md` — the dispatch self-containment rule, +12 lines, 0 removed.
 
-Not committed (gitignored `build/`): `build/c2/palette-comparison.png`, the render for Jay.
+**Nothing under `assets/` (except the derived `palette.json`) or `src/` was modified.** Verified by
+hash: `tileset.bin`, `PETSCII_COCO.asm`, `graphics.asm`, `PETROBOTS_6809.asm` all identical to
+`HEAD`.
 
 ### 3 — Reasoning
 
-**Why the ordering reduces to a partition.** A glyph carries palette *indices*; normally a cell
-shows `(pal[I], pal[P])`, inverted it shows `(pal[15−I], pal[15−P])`. So if the art wants colour *A*
-where a glyph appears normally and *C* where it appears inverted, *A* and *C* must sit at
-complementary indices. Two consequences: **which** index-pair a colour-pair occupies is irrelevant
-(all pairs (*i*, 15−*i*) are equivalent, and swapping within a pair only relabels *I* and *P*), so
-the whole problem is *partitioning 16 colours into 8 pairs* — solved exactly by DP matching over
-subsets. And **only glyphs used both ways constrain anything**: 26 of 55.
+**The engine model, established from `BITMAP_PLOTTER` rather than assumed.** `DoRegular` does
+`PULU D,Y` / `STD ,X` / `STY 2,X` — four bytes per row copied to the framebuffer unmodified. At 4bpp
+that is 8 pixels, so **a glyph is 64 independent 4-bit palette indices**. `NextRowInv`'s
+`COMA`/`COMB` complements every nibble, so inverse maps each pixel's index *n* → 15−*n*
+individually.
 
-**Colour choice and slot order are not separable**, so the frontier search re-solves the pairing
-exactly at every colour swap rather than optimising one then the other.
+**Why the ordering reduces to a pairing.** Choosing an index for a pixel fixes *both* what it shows
+normally (`pal[i]`) and inverted (`pal[15−i]`). A palette is therefore characterised entirely by its
+8 complement pairs — each pixel picks one of 16 options, being 8 pairs × 2 orientations — and which
+slot a pair occupies is irrelevant.
+
+**Why the 16 colours are chosen on the art alone.** Optimising colours jointly against the glyph
+model collapses the palette to **9 distinct colours** (`--objective joint` reproduces it): when one
+pattern serves many disagreeing cells, extra entries buy almost nothing, so the optimiser spends
+slots on duplicates of the compromise colours. Correct answer, wrong question — C3 splits glyphs,
+and a palette fitted to the unsplit case would be baked-in wrong.
 
 ### 4 — Verification (AC-by-AC)
 
-**AC1 — PASS.** Sampling restricted to `live` ∧ `informative`, `$55`/`$66` excluded. **186 tiles,
-1,417 cells, 55 glyph slots, 17 glyphs in exactly one tile**, and the contested list
-`$4D` 100 / `$20` 92 / `$3A` 82 / `$5F` 68 / `$64` 49 / `$67` 28 — **every figure reconciles
-exactly** with the dispatch's inventory. No discrepancy to explain.
+**AC1 — PASS.** Sampling restricted to `live` ∧ `informative`, `$55`/`$66` excluded.
+**186 tiles, 1,417 cells, 55 glyph slots, 17 glyphs in exactly one tile**, and the contested list
+`$4D` 100 / `$20` 92 / `$3A` 82 / `$5F` 68 / `$64` 49 / `$67` 28 — **every figure reconciles exactly**
+with the dispatch's inventory. No discrepancy to explain.
 
-**AC2 — PASS.** 16 entries, all valid `$FFBx` values from the GIME 64 (each chosen *after*
-quantising the demand to the gamut, so every entry is reachable). Weighted mean error **2.093**
-against the first cut's **6.5**.
+**AC2 — PASS.** 16 entries, all valid `$FFBx` values from the GIME 64, each chosen after quantising
+the demand to the gamut so every entry is reachable. **Mean per-pixel error 4.58 vs the first cut's
+6.5** — better, on a like-for-like mean. (RMS is 20.40; both are reported so neither flatters.)
 
-The first cut's figure is not directly comparable — it was computed over all Amiga pixels; mine is
-over the sampled cell demand, and the error-minimal 16 on that demand is 1.627. **The trade I made
-is explicit:** 1.627 → 2.093 (+0.466) buys inverse survival 17.3% → 25.9% and ordering efficiency
-55.4% → 75.6%, by spending one slot-pair on the heaviest demanded complement. I traded 0.47 of
-colour error for 8.6 points of inverse survival.
+The trade is explicit and is *not* the one the first derivation described: colour choice and slot
+order are near-independent here, because the ordering costs only +3.67. Nothing meaningful was
+traded away to satisfy the pairing.
 
-**AC3 — PASS. Weighting: cell count in the tileset**, not tile appearance in the levels. Justified
-in `docs/project/palette.md` §2 — the palette serves every *drawn cell*, and level-frequency
-weighting would let one common floor tile dominate. §7 flag 1 records the comparison.
+**AC3 — PASS. Weighting: per drawn cell**, not per level appearance — the palette serves every drawn
+cell, and level-frequency weighting would let one common floor tile dominate. **Not re-tested under
+the corrected model**; §7 flag 3.
 
-**AC4 — PASS.** Full analysis in `palette.md` §4. Demand spreads over **200 distinct pairs**, the
-heaviest at 9.7%:
+**AC4 — PASS, and the answer is structurally different from the first derivation.** Under the
+correct model the complement demand is per *pixel*, not per ink/paper pair. The pairing is solved
+exactly over the 16 chosen colours. **What the art wants and 8 pairs cannot accommodate is now
+quantified directly as +3.67** — the entire cost of the ordering constraint, across all 669 inverse
+cells in the derivation population.
 
-| demanded pair | weight |
-|---|---:|
-| `$00` ↔ itself | 9.7% |
-| `$00` ↔ `$07` | 8.7% |
-| `$07` ↔ itself | 8.5% |
-| `$07` ↔ `$38` | 6.6% |
-| `$00` ↔ `$38` | 6.6% |
+The first derivation's headline here — "19.3% of demand asks a colour to be its own complement",
+read as a structural finding about inverse video being a shape-doubling device — **was an artifact
+of the two-colour reduction** and does not survive. Recorded because it was reported as a finding.
 
-Placed at complementary indices: `$00`↔`$00` (rank 1) and `$07`↔`$38` (rank 4). **What the art wants
-and 8 pairs cannot accommodate: 200 demands compete for 8 slots.** Each slot-pair serves *either*
-one demanded complement *or* colour coverage. The residue is 80.8% of demand weight.
+**AC5 — PASS, with the metric replaced.** The dispatch's central number was "the fraction of the 852
+inverse-coded cells whose colours survive". **That metric is degenerate: a 1-colour palette scores
+100%** (measured; §5). It rewards discarding colour and cannot rank designs.
 
-**AC5 — PASS, with the correction that makes it readable.** Of 669 inverse-coded cells in the
-sampled population, **173 survive (25.9%)**; ink alone 62.6%, paper alone 50.2%. Method: assign each
-glyph the (ink, paper) indices C3 would most plausibly vote for — inverse cells voting through the
-complement — then check the **colour** rendered after complementing equals the colour the art wants.
-Compared as colours, not slot indices, because duplicate colours otherwise fail spuriously.
+Replaced with the error decomposition in §1, which is scale-free and additive: the ordering costs
+**+3.67** on top of a 95.08 that one-glyph-one-pattern already imposed. Failures are no longer a
+cell list but a continuous per-cell error, which C3 can threshold however it likes.
 
-**The raw fraction must not be read alone** (finding 2). Failures are listed by tile in
-`assets/palette.json` → `inverse_failures_by_tile`, **117 tiles**, ready for the cleanup queue.
-
-The 669 reconciles against the 852 in §2M: 852 counts all 256 tiles including corrupt-glyph cells;
-830 excluding those; **669** within live ∧ informative — the only population with art to compare
-against. All three reported so the denominator is unambiguous.
-
-**AC6 — PASS.** All three deliverables tracked on `wip`. JSON loads; its 16 slot values match
-`palette.md`'s block exactly (verified programmatically); complement pairs internally consistent;
+**AC6 — PASS.** `docs/project/palette.md` and `assets/palette.json` tracked on `wip`; JSON loads and
+its 16 slot values match the document's block exactly (verified programmatically);
 `applied: false`.
 
-**AC7 — PASS.** Crossed control:
+**AC7 — PASS, and the control did more than pass.** Same pipeline on `coco_ArtworkSheet.png`
+(DEMOTED; control only):
 
-| palette | on Amiga | on coco sheet |
-|---|---:|---:|
-| **Amiga-derived** | **2.093** | 1.804 |
-| coco-derived | 18.335 | 0.120 |
+| palette on the Amiga demand | floor | + sharing | + complement |
+|---|---:|---:|---:|
+| **Amiga-derived (proposed)** | **20.40** | 95.08 | **98.75** |
+| coco-derived (control) | 38.48 | 96.62 | 100.74 |
 
-**The wrong-sheet palette is 8.8× worse on the Amiga art.** Zero of 16 slots coincide. The demand
-*structures* differ too: 200 pairs vs 91, heaviest `$00`↔itself (9.7%) vs `$07`↔`$38` (15.5%).
-The derivation measures the art. `coco_ArtworkSheet.png` remains DEMOTED; nothing rests on it.
+**89% worse at the floor, 2% worse at the actual figure.** The derivation is strongly art-specific,
+and the difference is masked once sharing dominates. That gap is itself the argument for C3
+attacking sharing before palette refinement.
 
-**AC8 — PASS**, by hash. `src/graphics.asm`, `src/PETSCII_COCO.asm`, `src/PETROBOTS_6809.asm`,
-`src/BACKGROUND_TASKS_6809.ASM`, `src/utils.asm`, `assets/tileset.bin`, both art files and all ten
-level files hash identical to `HEAD`.
+**AC8 — PASS**, by hash, listed in §2.
 
-**AC9 — PASS on substance; the stated line count differs.** Before-hash matched
-`2b83d38…` exactly. After: **717 lines**, sha256
-`917425dd215257c44bc9988d6d55dee70b23992e783462d42067df36301275f3`. **12 lines added, 0 removed** —
-the quoted insert block is 12 lines, not the 16 the AC states, so 717 not 721. Superset check clean:
-**zero** old lines absent. Committed separately, first (`cee42f3`).
+**AC9 — PASS on substance; the stated line count differs.** Before-hash matched `2b83d38…` exactly.
+After: **717 lines**, sha256 `917425dd215257c44bc9988d6d55dee70b23992e783462d42067df36301275f3`,
+**12 added, 0 removed** — the quoted insert block is 12 lines, not the 16 the AC states. Superset
+check clean. Committed separately, first (`cee42f3`).
 
 ### 5 — Verdict-time evidence
 
-**AC5 — and the degeneracy control that reframes it.**
+**The degeneracy control that forced AC5's metric to be replaced:**
 
 ```
-palette                     distinct   error    inverse survival
-all black                          1   143.53          100.0%
-black / mid-grey                   2    66.12           74.7%
-black / white                      2   101.56           62.8%
-4 colours                          4    33.76           33.3%
-PROPOSED (j=1)                    15     2.09           25.9%
+palette            distinct   error    "inverse survival"
+all black                 1   143.53          100.0%
+black / mid-grey          2    66.12           74.7%
+black / white             2   101.56           62.8%
+4 colours                 4    33.76           33.3%
 ```
 
-**A 1-colour palette scores 100%.** The metric runs backwards across most of its range and selects
-for discarding colour. The scale-free reading uses the unconstrained population:
+**The cost of my own wrong model, measured before re-deriving:**
 
 ```
-                        normal cells    inverse cells    ordering efficiency
-                        (no constraint) (constrained)    (inverse / normal)
-error-first  (j=0)         31.3%           17.3%              55.4%
-PROPOSED     (j=1)         34.2%           25.9%              75.6%
-demand-first (j=8)         46.8%           41.1%              87.8%
-current graphics.asm       34.9%           25.7%              73.6%
+cells actually describable with 2 colours   6.8%
+pixels captured by the top-2 reduction     69.4% of 64
+distinct colours the reduction saw           26
+distinct colours actually present            46   (matches §2M independently)
 ```
 
-**Normal cells face no complement constraint at all**, so 34.2% is the ceiling imposed by everything
-else. The ordering costs ~8 points; the other ~66 are one-glyph-one-colour.
-
-**The frontier — each slot-pair serves demand OR coverage, never both:**
+**Error vs budget, and the ceiling** — the numbers behind §1's conclusion:
 
 ```
-j  demand%   err     distinct  normal%  inverse%  efficiency
-0     9.3    1.63       16      31.3     17.3       55.4%
-1    19.2    2.09       15      34.2     25.9       75.6%   <- proposed, the knee
-2    19.0    2.60       14      34.6     26.0       75.1%   <- costs a colour, buys nothing
-3    27.5    4.18       12      42.6     28.8       67.6%
-8    50.3   25.77        6      46.8     41.1       87.8%   <- near-monochrome
+budget   slots   error
+     0      69   113.64
+     5      74   105.67
+    11      80   100.85   shipped
+    18      87    97.49
+    30      99    92.45
+    45     114    89.03
+    59     128    86.79   every free slot; text font destroyed
+     -   2,303    25.31   ceiling, every cell its own glyph
 ```
 
-**AC7 control** — quoted in §4. **AC1 reconciliation** — 186 / 1,417 / 55 / 17 and the contested
-list, all exact.
-
-**The glyph-splitting headroom, which is the actionable output for C3:**
+**The glyph-slot budget is 11, not 59** — the constraint that forced a non-uniform allocation:
 
 ```
-319 distinct (glyph, ink, paper) demands across 1,417 cells; engine budget 128 glyph slots
-
-variants/glyph   cells satisfiable   slots needed
-      1               36.3%              55
-      2               55.0%              93
-      3               65.2%             122   <- practical ceiling
-      4               71.8%             146   exceeds budget
-      6               80.4%             183   exceeds budget
-
-90% of each glyph's own cells would need 235 slots — impossible on this engine.
+$00-$1F  letters          9 used by tiles, 23 free   NOT usable (text)
+$20-$3F  digits/punct    14 used by tiles, 18 free   NOT usable (text)
+$40-$5F  graphics        25 used by tiles,  7 free   usable pending a text audit
+$60-$7F  graphics        21 used by tiles, 11 free   USABLE
 ```
 
-**The render for Jay** — `build/c2/palette-comparison.png`, 1584×848: the Amiga sheet, the same
-sheet quantised to the proposed 16, and the slot-order swatch strip. Surfaced for inspection.
-**This report does not say what it shows.** It is gitignored (`build/`) and regenerable by
-`python tools/palettederive.py --sheet art/Amiga_Artwork.png --j 1 --render <path>`.
+`PETROBOTS_6809.asm:3589` maps codes `$60-$7F` down to `$00-$1F` before lookup, so letters, digits
+and punctuation render out of `$00-$3F`.
+
+**The allocation, exact by DP over (glyph, slots):**
+
+```
+$20 -> 5 variants (437 cells)    $3A -> 2 variants (396 cells)
+$66 -> 4 variants (268 cells)    $4D -> 2 variants (210 cells)
+$67 -> 3 variants  (81 cells)    658 tile cells repointed
+1 variant everywhere 113.64  ->  allocated 100.85
+```
+
+Greedy gave 105.27. Marginal gain is genuinely non-monotone — `$66` gains more going 2→3 variants
+than 1→2, because at K=2 the clustering must spend its only split separating normal from inverse
+cells — so greedy's diminishing-returns assumption picks the wrong slots.
+
+**Artifact integrity, verified rather than asserted:**
+
+```
+font-colour.asm assembles under lwasm, round-trips byte-identical to the .bin (4096 B)
+inverse bit preserved on all 658 repointed cells
+every new slot inside the safe $60-$7F band
+DESTRUCT_PATH and TILE_ATTRIB bytes untouched
+a render built independently FROM THE EMITTED FILES matches the tool's own panel on
+  153,600 of 153,664 pixels - the 64 differing are the single undrawable cell
+  (tile 255 BR, absent from tileset.bin)
+```
+
+**Renders surfaced for Jay** (gitignored, regenerable): `build/c2/palette-preview.png` — source
+beside the engine render, all 256 tiles. `build/c3/font-comparison.png` — source, 1 variant per
+glyph, allocated. **This report does not say what either shows.** Jay's verdict on the second is
+quoted in §1 and is the only visual judgment recorded here.
 
 ### 6 — Reactive deviations and ROUTE ACCOUNTING
 
-Route as dispatched: sample → weight → choose 16 from the GIME 64 → solve the ordering → test the
-inverse cells → control → deliverables. AC9 done first and committed separately.
+Route as dispatched, then substantially extended at Jay's direction (§9). What the commits contain:
 
-Deviations, all in method rather than scope:
+1. **AC9 first, committed separately** (`cee42f3`).
 
-1. **The complement demand is a soft outer product, not a majority vote.** A hard vote was built
-   first; printing the dominance distributions showed the modal colour ranging from **22% to 99%**,
-   so a 22% plurality would have been asserted as confidently as a 95% consensus. The soft form
-   changed the picture materially — the top demand fell from an apparent near-certainty to 9.7% of
-   weight spread over **200** pairs rather than a clean handful. Optimising against the hard version
-   would have fitted a sparse fiction and looked like a clean solve.
+2. **First derivation, since superseded** (`2ac7412`, report `cd1ceab`). Modelled each cell as one
+   ink + one paper colour — a reduction carried over from C1, where it is correct for matching
+   *shapes* against a monochrome font, and wrong as a *colour* model. Two controls I added
+   unprompted (a degeneracy check and a normal-cell baseline) were what made the result readable,
+   and both survived into the rewrite.
 
-2. **A bug of mine in the inverse test, found and fixed mid-run.** It compared slot *indices*, which
-   fails spuriously when a colour occupies more than one slot — and the proposal deliberately
-   duplicates `$00`. Comparing rendered *colours* moved the demand-first variant from 29.1% to
-   41.1%. Both figures are in the history; the corrected form is what §4 reports.
+3. **Marked SUPERSEDED rather than deleted** (`5ea5af1`) the moment Jay corrected me, so nothing
+   downstream could consume it unaware. `assets/palette.json` carried a `do_not_consume` flag until
+   the replacement landed.
 
-3. **The degeneracy control (finding 2) was not asked for.** Without it the dispatch's central
-   number would have selected the near-monochrome design, which is the opposite of the point.
+4. **Re-derived under the correct model** (`491f8e6`). Two bugs of mine found during the rewrite:
+   a k=1 allocation that silently dropped every normal cell from the variant accounting (making 1
+   variant appear to beat 2), and lexicographic "clustering" that grouped 64-dimensional vectors by
+   their top-left pixel. A pixel-accounting assert now guards the first, and K=1 agrees exactly with
+   the independent decomposition — the cross-check that proves it.
 
-4. **The normal-cell baseline was not asked for either**, and it is what overturned the framing.
-   It is the same discipline as C1's control sheets, applied to a metric rather than a source.
+5. **Preview fixed to draw all 256 tiles** (`c9b1949`). It had drawn only the 186 live ∧ informative
+   tiles it derives from, leaving 70 black — including 15 of the last row, which is almost entirely
+   non-live sprite/UI tiles. The derivation and render populations are now explicitly separate.
+   Panels are captioned inside the image, since Jay had to ask which side was which.
 
-5. **The frontier is reported rather than a single answer.** j=1 is recommended and j=2 is shown to
-   be dominated by it; the whole curve is in `palette.md` §4 so a different trade can be taken
-   without re-deriving.
+6. **Font + tileset remap built** (`8735598`), at Jay's request. This is C3 work done under a C2
+   dispatch; it is confined to `build/c3/` and touches no protected asset. The slot-budget finding
+   (11, not 59) came out of it and invalidates a claim I had made earlier in the exchange — that
+   "2 variants everywhere = 95 of 128 slots" fits. It does not; that counted raw slots without
+   asking which ones text needs.
 
-6. **Nothing was applied.** `graphics.asm` untouched.
+**Nothing was applied.** `graphics.asm`, the font, `tileset.bin` and the levels are untouched.
 
 ### 7 — Uncertainty flags
 
-1. **Weighting: cell count, not level frequency.** Chosen, not derived. Level-frequency weighting
-   would let a common floor tile dominate the palette; cell count treats every drawn cell equally.
-   The dispatch asked for both if they disagree materially — I did not compute the level-weighted
-   palette in full, so **whether it disagrees materially is unmeasured**. It is a one-line change to
-   `colour_weights()` and worth doing before C3 commits to this.
+1. **The whole first derivation was wrong and I did not catch it.** CLAUDE.md §4 states plainly that
+   every nibble is a palette index and that the font is 2-colour by deliberate choice. I read that
+   section during A2 and again at C2's start. The failure was carrying C1's measurement convention
+   into a context where it was a claim about the engine. §10 captures it.
 
-2. **The `j=1` recommendation rests on a knee, which is a judgment.** j=0 is more accurate in
-   colour; j=8 survives inversion better; j=1 is where the marginal return is highest. A different
-   weighting of "colour fidelity" against "inverse fidelity" picks differently, and the whole
-   frontier is published so that choice is Jay's rather than buried.
+2. **Jay's "still not great" is a verdict on the approach, not on tuning.** The evidence supports
+   reading it structurally: even at 128 slots the error is 86.79 against a 25.31 ceiling. **I have
+   not established what an acceptable figure would be**, and no number here says whether any
+   reachable version is good enough. That is Jay's call and §8 lists the levers.
 
-3. **`assign_glyph_indices` is a stand-in for C3's vote.** C3 will colour glyphs by its own method;
-   mine is a plausible majority used only to make the ordering testable. **A better C3 vote would
-   raise all the survival numbers** — so 25.9% is a floor for this palette, not a prediction.
+3. **Weighting (per cell vs per level appearance) is still not re-tested** under the corrected
+   model. Open since the first derivation; a one-line change to the demand accumulation.
 
-4. **The ink/paper split within a cell** comes from majority agreement against the glyph's own ink
-   mask. Where a cell's two art colours are close, that assignment is noisy, and JPEG artefacts make
-   it noisier.
+4. **The variant clustering is a lower bound.** k-means on raw demand vectors with deterministic
+   seeding. A better split — or one that also chooses *which* glyph a cell reuses, rather than
+   taking the tileset's assignment as fixed — would do better. The curve in §5 is a floor for what
+   splitting can achieve, not a ceiling.
 
-5. **Slot 0 is treated as having no special status.** If `$FF9A` (border) or anything else cares
-   which colour sits at index 0, that is unmodelled — and index 0 currently holds `$00`, which is
-   the most likely choice anyway.
+5. **The `$40-$5F` graphics band is "plausibly safe", not proven.** It would raise the budget from
+   11 to 18 (100.85 → 97.49). Establishing it needs an audit of every code path that emits a
+   character code, which I did not do — I traced the `$60-$7F` → `$00-$1F` remap and stopped there.
 
-6. **The 8.8× control ratio is favourable but partly structural.** `coco_ArtworkSheet.png` is
-   already drawn in CoCo colours, so a palette derived from it fits it almost perfectly (0.120) —
-   which inflates the contrast. The load-bearing half is that the coco-derived palette is **18.335**
-   on the Amiga art versus 2.093, and that direction is not structurally advantaged.
+6. **Text glyphs are re-indexed, and text inverse video is not modelled.** Glyphs not used by tiles
+   keep their shapes with old index 0 → the palette's black slot (8) and 1 → white (15). But slots 8
+   and 15 are not complements of each other, so **inverse-video text would render orange-on-grey**
+   rather than inverted black/white. I did not check whether anything renders text inverted.
 
-7. **AC9's stated line count (721 / 16 added) does not match the quoted insert block** (12 lines →
-   717). Same class as A3's 6-vs-5 and 44-vs-43. Zero lines removed, so the §2D gate holds; flagged
-   because the figure would otherwise be restated in a later dispatch.
+7. **The art is a JPEG**, snapped to the GIME 64 before anything else. Re-runnable if lossless art
+   appears.
 
-8. **17 non-informative and 8 unmatched tiles carry no colour sample.** Glyphs appearing *only*
-   there have nothing to vote with and C3 must fall back. I did not enumerate which glyphs those
-   are — a short follow-up.
+8. **17 non-informative and 8 unmatched tiles carry no colour sample**; glyphs appearing only there
+   fall back to the re-indexed monochrome shape. Not enumerated.
+
+9. **Nothing has been run.** These are static artifacts. A live MAME run is the only real verdict
+   (§4), and applying any of this needs authorisation for protected assets (§2B).
 
 ### 8 — Follow-up candidates
 
-- **Compute the level-frequency-weighted palette** and compare (§7 flag 1). Cheap; closes the one
-  AC3 sub-question I left open.
-- **Enumerate glyphs with no sample** (§7 flag 8) so C3's fallback set is known in advance.
-- **Glyph splitting is C3's main lever, not an optional second pass** — and it is capped at ~65% by
-  the 128-slot budget. §2M describes it as optional; that framing understates it.
-- **`$00` self-paired at slots 0/15 is a load-bearing choice.** If C3 finds it costly, the frontier
-  table gives the alternative directly.
-- Carried, unchanged: pinned-digest check on the three source blobs (A1b §8); the three MAME idioms
-  to fold in (A2 §10, §2D); where run captures live (A2 §7 flag 4).
-- `main` is at `a62809e`, now seven dispatches behind.
+**On the quality question Jay raised**, in descending order of what the evidence says they are worth:
+
+- **Reduce the demand, not the compression.** ~2,300 cells against ≤128 patterns is 18:1, and the
+  ceiling says slot allocation cannot close it. The levers that can: simplify the art targets so
+  cells that share a glyph actually look alike, or accept a stylised approximation rather than a
+  reproduction. Both are Jay's design calls, not measurements.
+- **Free glyph slots by moving text out of the shared font** — the only way past 18 extra slots. Big
+  change; buys at most 86.79, so worth it only if that is near an acceptable figure.
+- **Audit the `$40-$5F` band** (§7 flag 5) — cheap, worth 100.85 → 97.49.
+- **Let the converter re-assign which glyph a cell uses** (§7 flag 4), rather than inheriting the
+  tileset's assignment. Unmeasured, and the only untested lever that could move things structurally.
+- **Check whether text is ever rendered inverted** (§7 flag 6) before any of this is applied.
+- Re-test the weighting choice (§7 flag 3).
+
+Carried, unchanged: pinned-digest check on the three source blobs (A1b §8); the three MAME idioms to
+fold in (A2 §10, §2D); where run captures live (A2 §7 flag 4). `main` is at `a62809e`, now eight
+dispatches behind.
 
 ### 9 — User interaction during task
 
-None. The dispatch was self-contained — which it now requires of itself, via the rule AC9 installs.
-Every judgment call is recorded in §7 rather than raised.
+Five exchanges, four of which changed the work:
+
+1. *"what am I looking at in the preview?"* — answered; the right panel was a per-pixel quantisation,
+   an upper bound, not an engine render. Led to the engine-faithful render.
+2. **"i think you are wrong about the 8x8 glyphs. there should be 16 color capable"** — **correct,
+   and the most consequential correction in the dispatch.** Confirmed from `BITMAP_PLOTTER`,
+   quantified, marked superseded, re-derived.
+3. *"the new preview is less than desirable, the last row doesn't even display tiles"* — correct;
+   my filter, not the render. Fixed to draw all 256 tiles.
+4. *"did you re-render the tileset"* — answered: the preview is a genuine tileset render (proved by
+   showing glyph `$3A`'s 396 instances render byte-identically), but no font artifact existed.
+5. *"rework and produce the better version"* — produced `tools/fontbuild.py` and the artifacts.
+6. *"the allocated looks much better but still not great"* — recorded as the visual verdict (§1) and
+   answered with the budget/ceiling measurement rather than left open.
 
 ### 10 — Candidate(s) captured this task
 
-Two new rows in `seeds/cocobots/live/`, pool commit **`39e6e28`**, pushed. **New rows only — no
-existing entry read or edited.**
+Four rows in `seeds/cocobots/live/`. Pool commits **`39e6e28`** (two, from the first derivation —
+both survived the rewrite) and **`10a465f`** (two, from the correction and rework).
 
 | slug | one line |
 |---|---|
-| `fidelity-metric-needs-an-unconstrained-baseline` | A metric a degenerate answer maximises is not a quality measure; pair it with the same metric where the constraint is inert and report the ratio |
-| `hard-vote-discards-its-own-margin` | A majority vote emits a 22% plurality and a 95% consensus identically; check the dominance distribution before letting one stand |
-
-The first is the stronger: its control overturned the dispatch's own framing, showing the constraint
-under test costs ~8 points while an unmeasured one costs ~66.
+| `fidelity-metric-needs-an-unconstrained-baseline` | A metric a degenerate answer maximises is not a quality measure; pair it with the same metric where the constraint is inert |
+| `hard-vote-discards-its-own-margin` | A majority vote emits a 22% plurality and a 95% consensus identically |
+| `a-measurement-convention-is-not-a-property-of-the-system` | A reduction adopted for one measurement becomes a false claim about the system when carried downstream — **the error Jay caught** |
+| `optimise-only-after-checking-the-ceiling-says-it-can-matter` | Before tuning an allocation, measure what the unbounded version achieves; here every slot buys 14% against a 3.4× gap |
 
 ### 11 — Commit
 
 | | |
 |---|---|
-| `CLAUDE.md` (AC9) | **`cee42f31ffdc77923e3a4e03e5e426fe274143ff`** |
-| deliverables | **`2ac74129a0dc3a5bd6ab73ba2760d092085a55de`** |
+| `CLAUDE.md` (AC9) | `cee42f31ffdc77923e3a4e03e5e426fe274143ff` |
+| first derivation (superseded) | `2ac74129a0dc3a5bd6ab73ba2760d092085a55de` |
+| first report | `cd1ceabf8ecca9884e6cc64a489f5e74bfbcad70` |
+| marked SUPERSEDED | `5ea5af1381620331f2321bcfddb8770211281415` |
+| **re-derivation** | **`491f8e6929506f33c72958f7ab6b1662254ce69d`** |
+| preview: all 256 tiles | `c9b194937bfb41c4509dfd8277b482168c473e3e` |
+| **font + tileset remap** | **`87355988b4b4fa0b618999ccf535571481d5bfe3`** |
 | this report | committed separately; SHA in the delivering message per §7 |
 | branch | `wip`, pushed |
 | `main` | untouched at `a62809e` |
-| pool | **`39e6e28`**, pushed |
 
-Working tree clean. No shipped asset modified; the palette is **not applied**.
+Working tree clean. No shipped asset modified; nothing applied.
