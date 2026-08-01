@@ -90,6 +90,58 @@ What hand-editing needs, and none of it exists yet:
 
 ---
 
+## 3d. Can the palette be re-derived more colourfully now? Measured: no
+
+**Jay asked, 2026-08-01:** *"now that we have a non-inverse path can we re-derive a more colorful
+palette."* Measured rather than assumed, and the answer is no — for three reasons that compound.
+
+**The palette was never constrained by inverse.** C2 chose the 16 by `--objective floor`: minimise
+per-pixel quantisation error of the artwork, with no glyph model in the loop. The complement pairing
+was solved *afterwards*, over those fixed 16. **Inverse constrained the slot ORDER, never the colour
+CHOICE**, so removing it frees nothing on this axis.
+
+**Re-deriving against the real configuration changes almost nothing.** `tools/repalette.py`
+re-optimises the 16 against the actual 221-glyph, inverse-removed rendering error rather than
+against the art alone:
+
+| | |
+|---|---|
+| colours unchanged | **14 of 16** |
+| swapped | `$39`→`$35`, `$04`→`$08` — exactly the two slots the render barely used (0.5% and 0.1%) |
+| error | 83.28 → **83.13** |
+| mean chroma | 85.0 → 85.0, unchanged |
+
+0.15 of error is a twenty-fifth of the 3.71 gap Jay already judged invisible.
+
+**Deliberately biasing toward chroma does not reach the screen.** Upweighting chromatic demand so
+that getting a colourful pixel wrong costs more than getting a grey one wrong:
+
+| bias | palette chroma | **rendered chroma** | error |
+|---:|---:|---:|---:|
+| baseline | 85.0 | 44.7 | 83.28 |
+| 0 (re-derived) | 85.0 | 45.1 | 83.13 |
+| ×2 | 100.9 | 45.8 | 83.23 |
+| ×8 | **106.2** | **46.3** | 83.31 |
+| — the Amiga art itself | — | **50.5** | — |
+
+**Palette chroma rises 25%; rendered chroma rises 3.6%.** The render picks whichever entry is
+nearest what the art asks for, and **the art asks for pure grey 58.2% of the time**. Extra chroma
+lands in slots the art never selects.
+
+**The ceiling is the artwork, not the palette.** At 221 glyphs the render is already at 88% of the
+source's own colourfulness (44.7 of 50.5) and within 1.3 points on grey share (56.9% vs 58.2%). A
+palette cannot put colour on screen that the source does not contain.
+
+**Which points straight back at §3c.** Hand-editing is the one lever that *can* exceed the source,
+because a person can choose colours the Amiga art never had. The automated pipeline is bounded by
+the artwork; the hand pass is not. **If "more colourful" is the goal, it is an art decision, not a
+derivation.**
+
+Visual: [`../reports/C5-renders/palette-variants.png`](../reports/C5-renders/palette-variants.png)
+— source, baseline, re-derived and chroma×8, all at 221 glyphs, with each palette's swatch strip.
+
+---
+
 ## 4. What is NOT decided here
 
 - **Whether to do the memory-map rework at all.** 221 is the best-looking option; that is not the
