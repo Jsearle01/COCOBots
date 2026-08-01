@@ -250,10 +250,26 @@ regeneration.
 
 None during the dispatch itself; it was self-contained, and every judgment call is in §7.
 
-**One exchange after delivery:** *"there is no bild/c4"* — the directory existed with all fifteen
+**Three exchanges after delivery.**
+
+1. *"there is no bild/c4"* — the directory existed with all fifteen
 files, but `build/` is gitignored so it was invisible from the remote and from any clone. Correct
 report of a real problem on my side. Fixed by tracking the renders under
 `docs/reports/C4-renders/` (§7 flag 7), which closes a flag open since A2.
+
+2. *"create a side by side of each ladder to the amiga art"* — added `pair-128/192/221/256.png`,
+   source beside each budget alone at ×3. The panels are reused, not recomputed, so they are the
+   same engine-faithful renders already verified in AC4.
+
+3. **THE VERDICT THIS DISPATCH EXISTED FOR** — *"i think in anycase i am going to have to hand edit
+   these glyphs. the 221 looks the best with 256 not showing any real improvement"*. Recorded in
+   [`docs/project/glyph-budget-decision.md`](../project/glyph-budget-decision.md). **221 is the
+   target; 256 is rejected.** Two consequences follow immediately: the bootloader leaves the art
+   critical path entirely (256 was the only configuration needing it, and the case for it now rests
+   solely on level loading), and **83.28 becomes a floor rather than a target**, since hand-editing
+   can beat a metric that weights all pixels equally.
+
+   It is also a calibration on the metric itself: **221 → 256 is 3.71 points and is not visible.**
 
 ### 10 — Candidate(s) captured this task
 
