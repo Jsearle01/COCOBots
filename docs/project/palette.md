@@ -1,7 +1,47 @@
 # Proposed CoCo3 palette, derived from the Amiga artwork
 
-**Status:** PROPOSAL, C2 re-derivation, 2026-08-01. **Not applied.** `src/graphics.asm` is
-untouched; C3 applies this, after Jay has seen it.
+**Status:** PROPOSAL, C2 re-derivation, **superseded C5 by the hue-covered variant**. Not applied;
+`src/graphics.asm` is untouched.
+
+> ## Adopted palette — hue-covered
+>
+> ```
+> $00 $3F $0E $1C $15 $2A $22 $23 $06 $07 $38 $03 $35 $01 $0A $30
+> ```
+>
+> **Jay, 2026-08-01, on the comparison render: *"that looks slightly better"*.**
+>
+> The palette below minimised frequency-weighted quantisation error, which held **five blue slots
+> and zero green or magenta**. Jay saw the missing colours before the measurement did — mean chroma,
+> the statistic used to claim parity with the art, is a magnitude average and cannot see hue
+> variety. Reserving one slot per hue band the art uses above 0.2% of pixels costs **+0.06 error**
+> (83.28 → 83.34 at 221 glyphs) and puts green and magenta on screen for the first time
+> (0.74% and 0.15% of rendered pixels, from 0.00%).
+>
+> | band | before | after |
+> |---|---:|---:|
+> | grey | 4 | 4 |
+> | blue | **5** | **3** |
+> | green | **0** | **1** |
+> | magenta | **0** | **1** |
+> | orange | 1 | 2 |
+> | yellow | 3 | 2 |
+> | red / cyan | 1 / 2 | 1 / 2 |
+>
+> The ladder is undisturbed: 128 → 102.34, 192 → 87.27, 221 → 83.34, 256 → 79.64. Ordering and gaps
+> preserved, so the C4 verdict (221 best, 256 no real improvement) stands.
+>
+> **At the target configuration slot ORDER is meaningless** — inverse is removed, `NextRowInv` is
+> gone, and the complement pairing carries no rendering consequence. It matters only if inverse is
+> retained.
+>
+> Machine-readable: [`assets/palette.json`](../../assets/palette.json), which now carries this
+> variant. Reproduce with `python tools/repalette.py --glyphs 221 --hue-coverage`.
+> Render: [`../reports/C5-renders/hue-coverage.png`](../reports/C5-renders/hue-coverage.png).
+
+---
+
+## The superseded derivation follows, retained as the record of how it was reached
 
 **Machine-readable:** [`assets/palette.json`](../../assets/palette.json).
 Reproduced by `python tools/palettederive.py --sheet art/Amiga_Artwork.png --objective floor`.

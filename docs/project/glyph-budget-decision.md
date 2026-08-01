@@ -189,7 +189,12 @@ covered   $00 $3F $0E $1C $15 $2A $22 $23 $06 $07 $38 $03 $35 $01 $0A $30   err 
 taking two slots off blue.
 
 Visual: [`../reports/C5-renders/hue-coverage.png`](../reports/C5-renders/hue-coverage.png) — source,
-baseline, hue-covered, all at 221 glyphs. **Not adopted; Jay's call.**
+baseline, hue-covered, all at 221 glyphs.
+
+**ADOPTED. Jay, 2026-08-01: *"that looks slightly better"*.** `assets/palette.json` now carries the
+hue-covered variant; the frequency-only derivation is retained in `palette.md` as the record of how
+it was reached. Checked before adopting: the ladder is undisturbed (128 → 102.34, 192 → 87.27,
+221 → 83.34, 256 → 79.64), ordering and gaps preserved, so the C4 verdict stands unchanged.
 
 **And §3c still stands.** Hand-editing remains the one lever that can exceed the source, because a
 person can choose colours the Amiga art never had. But the palette had a real, fixable defect, and

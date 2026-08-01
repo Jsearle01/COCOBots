@@ -1,116 +1,47 @@
 {
  "source_sheet": "art/Amiga_Artwork.png",
- "derived": "2026-08-01, dispatch C2 (re-derived under the 16-colour glyph model)",
+ "derived": "2026-08-01, dispatch C2, re-derived C5 with hue coverage",
  "applied": false,
- "note": "Proposal only. C3 applies this; graphics.asm is untouched.",
- "engine_model": "every glyph pixel is an independent 4-bit palette index; NextRowInv complements each one (i -> 15-i)",
+ "note": "Proposal only. graphics.asm is untouched. ADOPTED VARIANT: hue-covered. Jay, 2026-08-01: \"that looks slightly better\" - on the render comparing this against the previous frequency-only palette.",
+ "supersedes": {
+  "palette": "Proposal only. C3 applies this; graphics.asm is untouched.",
+  "previous_slots": [
+   "$22",
+   "$31",
+   "$1C",
+   "$06",
+   "$39",
+   "$0E",
+   "$08",
+   "$07",
+   "$00",
+   "$0A",
+   "$23",
+   "$30",
+   "$38",
+   "$03",
+   "$01",
+   "$3F"
+  ],
+  "why": "The previous palette minimised frequency-weighted quantisation error and so held FIVE blue slots and ZERO green or magenta - 30 of the art\u2019s 46 colours displaced >60 RGB units, with displacements crossing hue boundaries (red->olive, green->yellow, magenta->blue). Jay saw the missing colours before the measurement did. Mean chroma, the statistic used to claim parity with the art, is a magnitude average and is blind to hue variety.",
+  "cost": "+0.06 rendering error at 221 glyphs (83.28 -> 83.34)"
+ },
+ "engine_model": "every glyph pixel is an independent 4-bit palette index. At the target configuration (221 glyphs, inverse REMOVED) NextRowInv is gone, so slot ORDER carries no meaning - the complement pairing below is informational only and applies solely if inverse video is retained.",
+ "hue_coverage": {
+  "rule": "one slot reserved per hue band the art uses above 0.2% of pixels",
+  "bands": [
+   "blue",
+   "cyan",
+   "green",
+   "magenta",
+   "orange",
+   "red",
+   "yellow"
+  ]
+ },
  "slots": [
   {
    "slot": 0,
-   "value": "$22",
-   "byte": 34,
-   "rgb": [
-    170,
-    85,
-    0
-   ],
-   "complement_slot": 15,
-   "complement_value": "$3F",
-   "demand_pixels": 2396
-  },
-  {
-   "slot": 1,
-   "value": "$31",
-   "byte": 49,
-   "rgb": [
-    170,
-    170,
-    85
-   ],
-   "complement_slot": 14,
-   "complement_value": "$01",
-   "demand_pixels": 1096
-  },
-  {
-   "slot": 2,
-   "value": "$1C",
-   "byte": 28,
-   "rgb": [
-    85,
-    170,
-    170
-   ],
-   "complement_slot": 13,
-   "complement_value": "$03",
-   "demand_pixels": 3879
-  },
-  {
-   "slot": 3,
-   "value": "$06",
-   "byte": 6,
-   "rgb": [
-    85,
-    85,
-    0
-   ],
-   "complement_slot": 12,
-   "complement_value": "$38",
-   "demand_pixels": 2751
-  },
-  {
-   "slot": 4,
-   "value": "$39",
-   "byte": 57,
-   "rgb": [
-    170,
-    170,
-    255
-   ],
-   "complement_slot": 11,
-   "complement_value": "$30",
-   "demand_pixels": 1862
-  },
-  {
-   "slot": 5,
-   "value": "$0E",
-   "byte": 14,
-   "rgb": [
-    85,
-    85,
-    170
-   ],
-   "complement_slot": 10,
-   "complement_value": "$23",
-   "demand_pixels": 4827
-  },
-  {
-   "slot": 6,
-   "value": "$08",
-   "byte": 8,
-   "rgb": [
-    0,
-    0,
-    170
-   ],
-   "complement_slot": 9,
-   "complement_value": "$0A",
-   "demand_pixels": 738
-  },
-  {
-   "slot": 7,
-   "value": "$07",
-   "byte": 7,
-   "rgb": [
-    85,
-    85,
-    85
-   ],
-   "complement_slot": 8,
-   "complement_value": "$00",
-   "demand_pixels": 12436
-  },
-  {
-   "slot": 8,
    "value": "$00",
    "byte": 0,
    "rgb": [
@@ -118,90 +49,12 @@
     0,
     0
    ],
-   "complement_slot": 7,
-   "complement_value": "$07",
-   "demand_pixels": 26583
+   "hue_band": "grey",
+   "complement_slot": 15,
+   "complement_value": "$30"
   },
   {
-   "slot": 9,
-   "value": "$0A",
-   "byte": 10,
-   "rgb": [
-    0,
-    85,
-    170
-   ],
-   "complement_slot": 6,
-   "complement_value": "$08",
-   "demand_pixels": 4399
-  },
-  {
-   "slot": 10,
-   "value": "$23",
-   "byte": 35,
-   "rgb": [
-    170,
-    85,
-    85
-   ],
-   "complement_slot": 5,
-   "complement_value": "$0E",
-   "demand_pixels": 1366
-  },
-  {
-   "slot": 11,
-   "value": "$30",
-   "byte": 48,
-   "rgb": [
-    170,
-    170,
-    0
-   ],
-   "complement_slot": 4,
-   "complement_value": "$39",
-   "demand_pixels": 754
-  },
-  {
-   "slot": 12,
-   "value": "$38",
-   "byte": 56,
-   "rgb": [
-    170,
-    170,
-    170
-   ],
-   "complement_slot": 3,
-   "complement_value": "$06",
-   "demand_pixels": 12892
-  },
-  {
-   "slot": 13,
-   "value": "$03",
-   "byte": 3,
-   "rgb": [
-    0,
-    85,
-    85
-   ],
-   "complement_slot": 2,
-   "complement_value": "$1C",
-   "demand_pixels": 3048
-  },
-  {
-   "slot": 14,
-   "value": "$01",
-   "byte": 1,
-   "rgb": [
-    0,
-    0,
-    85
-   ],
-   "complement_slot": 1,
-   "complement_value": "$31",
-   "demand_pixels": 5006
-  },
-  {
-   "slot": 15,
+   "slot": 1,
    "value": "$3F",
    "byte": 63,
    "rgb": [
@@ -209,140 +62,208 @@
     255,
     255
    ],
-   "complement_slot": 0,
-   "complement_value": "$22",
-   "demand_pixels": 2007
-  }
- ],
- "complement_pairs": [
+   "hue_band": "grey",
+   "complement_slot": 14,
+   "complement_value": "$0A"
+  },
   {
-   "slots": [
+   "slot": 2,
+   "value": "$0E",
+   "byte": 14,
+   "rgb": [
+    85,
+    85,
+    170
+   ],
+   "hue_band": "blue",
+   "complement_slot": 13,
+   "complement_value": "$01"
+  },
+  {
+   "slot": 3,
+   "value": "$1C",
+   "byte": 28,
+   "rgb": [
+    85,
+    170,
+    170
+   ],
+   "hue_band": "cyan",
+   "complement_slot": 12,
+   "complement_value": "$35"
+  },
+  {
+   "slot": 4,
+   "value": "$15",
+   "byte": 21,
+   "rgb": [
+    85,
+    170,
+    85
+   ],
+   "hue_band": "green",
+   "complement_slot": 11,
+   "complement_value": "$03"
+  },
+  {
+   "slot": 5,
+   "value": "$2A",
+   "byte": 42,
+   "rgb": [
+    170,
+    85,
+    170
+   ],
+   "hue_band": "magenta",
+   "complement_slot": 10,
+   "complement_value": "$38"
+  },
+  {
+   "slot": 6,
+   "value": "$22",
+   "byte": 34,
+   "rgb": [
+    170,
+    85,
+    0
+   ],
+   "hue_band": "orange",
+   "complement_slot": 9,
+   "complement_value": "$07"
+  },
+  {
+   "slot": 7,
+   "value": "$23",
+   "byte": 35,
+   "rgb": [
+    170,
+    85,
+    85
+   ],
+   "hue_band": "red",
+   "complement_slot": 8,
+   "complement_value": "$06"
+  },
+  {
+   "slot": 8,
+   "value": "$06",
+   "byte": 6,
+   "rgb": [
+    85,
+    85,
+    0
+   ],
+   "hue_band": "yellow",
+   "complement_slot": 7,
+   "complement_value": "$23"
+  },
+  {
+   "slot": 9,
+   "value": "$07",
+   "byte": 7,
+   "rgb": [
+    85,
+    85,
+    85
+   ],
+   "hue_band": "grey",
+   "complement_slot": 6,
+   "complement_value": "$22"
+  },
+  {
+   "slot": 10,
+   "value": "$38",
+   "byte": 56,
+   "rgb": [
+    170,
+    170,
+    170
+   ],
+   "hue_band": "grey",
+   "complement_slot": 5,
+   "complement_value": "$2A"
+  },
+  {
+   "slot": 11,
+   "value": "$03",
+   "byte": 3,
+   "rgb": [
     0,
-    15
+    85,
+    85
    ],
-   "colours": [
-    "$22",
-    "$3F"
-   ],
-   "self_paired": false
+   "hue_band": "cyan",
+   "complement_slot": 4,
+   "complement_value": "$15"
   },
   {
-   "slots": [
-    1,
-    14
+   "slot": 12,
+   "value": "$35",
+   "byte": 53,
+   "rgb": [
+    255,
+    170,
+    85
    ],
-   "colours": [
-    "$31",
-    "$01"
-   ],
-   "self_paired": false
+   "hue_band": "orange",
+   "complement_slot": 3,
+   "complement_value": "$1C"
   },
   {
-   "slots": [
-    2,
-    13
+   "slot": 13,
+   "value": "$01",
+   "byte": 1,
+   "rgb": [
+    0,
+    0,
+    85
    ],
-   "colours": [
-    "$1C",
-    "$03"
-   ],
-   "self_paired": false
+   "hue_band": "blue",
+   "complement_slot": 2,
+   "complement_value": "$0E"
   },
   {
-   "slots": [
-    3,
-    12
+   "slot": 14,
+   "value": "$0A",
+   "byte": 10,
+   "rgb": [
+    0,
+    85,
+    170
    ],
-   "colours": [
-    "$06",
-    "$38"
-   ],
-   "self_paired": false
+   "hue_band": "blue",
+   "complement_slot": 1,
+   "complement_value": "$3F"
   },
   {
-   "slots": [
-    4,
-    11
+   "slot": 15,
+   "value": "$30",
+   "byte": 48,
+   "rgb": [
+    170,
+    170,
+    0
    ],
-   "colours": [
-    "$39",
-    "$30"
-   ],
-   "self_paired": false
-  },
-  {
-   "slots": [
-    5,
-    10
-   ],
-   "colours": [
-    "$0E",
-    "$23"
-   ],
-   "self_paired": false
-  },
-  {
-   "slots": [
-    6,
-    9
-   ],
-   "colours": [
-    "$08",
-    "$0A"
-   ],
-   "self_paired": false
-  },
-  {
-   "slots": [
-    7,
-    8
-   ],
-   "colours": [
-    "$07",
-    "$00"
-   ],
-   "self_paired": false
+   "hue_band": "yellow",
+   "complement_slot": 0,
+   "complement_value": "$00"
   }
  ],
- "error_decomposition": {
-  "pixels": 90688,
-  "floor": 20.4,
-  "sharing": 95.08,
-  "actual": 98.75,
-  "cost_of_sharing": 74.67,
-  "cost_of_complement": 3.67
+ "metrics": {
+  "glyphs": 221,
+  "inverse": "removed",
+  "rendering_error": 83.34,
+  "previous_error": 83.28,
+  "green_pixels_rendered_pct": 0.74,
+  "magenta_pixels_rendered_pct": 0.15,
+  "previous_green_pct": 0.0,
+  "previous_magenta_pct": 0.0
  },
- "glyph_variants": [
-  {
-   "variants": 1,
-   "glyph_slots": 55,
-   "rms": 98.75
-  },
-  {
-   "variants": 2,
-   "glyph_slots": 95,
-   "rms": 93.85
-  },
-  {
-   "variants": 3,
-   "glyph_slots": 131,
-   "rms": 83.2
-  },
-  {
-   "variants": 4,
-   "glyph_slots": 165,
-   "rms": 79.02
-  },
-  {
-   "variants": 5,
-   "glyph_slots": 197,
-   "rms": 75.27
-  },
-  {
-   "variants": 6,
-   "glyph_slots": 228,
-   "rms": 72.79
-  }
- ],
- "cells_sampled": 1417
+ "ladder_unchanged": {
+  "128_inverse_kept": 102.34,
+  "192": 87.27,
+  "221": 83.34,
+  "256": 79.64,
+  "note": "ordering and gaps preserved; the C4 verdict (221 best) stands"
+ }
 }
