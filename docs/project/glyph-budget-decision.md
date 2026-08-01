@@ -191,8 +191,10 @@ taking two slots off blue.
 Visual: [`../reports/C5-renders/hue-coverage.png`](../reports/C5-renders/hue-coverage.png) — source,
 baseline, hue-covered, all at 221 glyphs.
 
-**ADOPTED. Jay, 2026-08-01: *"that looks slightly better"*.** `assets/palette.json` now carries the
-hue-covered variant; the frequency-only derivation is retained in `palette.md` as the record of how
+**SUPERSEDED — see below.** Jay first judged the hue-covered variant *"slightly better"* than the
+frequency-only one, then compared both against his own palette with its duplicate slots reclaimed
+and chose that instead: *"+cyan and +blue is best"*. `assets/palette.json` carries **the in-code
+palette + `$03` cyan + `$0E` blue**, error 85.48 at 221. The hue-covered derivation the frequency-only derivation is retained in `palette.md` as the record of how
 it was reached. Checked before adopting: the ladder is undisturbed (128 → 102.34, 192 → 87.27,
 221 → 83.34, 256 → 79.64), ordering and gaps preserved, so the C4 verdict stands unchanged.
 

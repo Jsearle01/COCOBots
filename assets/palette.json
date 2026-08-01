@@ -1,269 +1,237 @@
 {
- "source_sheet": "art/Amiga_Artwork.png",
- "derived": "2026-08-01, dispatch C2, re-derived C5 with hue coverage",
+ "source": "src/graphics.asm PALETTERGB, with slots 14/15 reclaimed",
+ "derived": "2026-08-01, C5",
  "applied": false,
- "note": "Proposal only. graphics.asm is untouched. ADOPTED VARIANT: hue-covered. Jay, 2026-08-01: \"that looks slightly better\" - on the render comparing this against the previous frequency-only palette.",
- "supersedes": {
-  "palette": "Proposal only. C3 applies this; graphics.asm is untouched.",
-  "previous_slots": [
-   "$22",
-   "$31",
-   "$1C",
-   "$06",
-   "$39",
-   "$0E",
-   "$08",
-   "$07",
-   "$00",
-   "$0A",
-   "$23",
-   "$30",
-   "$38",
-   "$03",
-   "$01",
-   "$3F"
-  ],
-  "why": "The previous palette minimised frequency-weighted quantisation error and so held FIVE blue slots and ZERO green or magenta - 30 of the art\u2019s 46 colours displaced >60 RGB units, with displacements crossing hue boundaries (red->olive, green->yellow, magenta->blue). Jay saw the missing colours before the measurement did. Mean chroma, the statistic used to claim parity with the art, is a magnitude average and is blind to hue variety.",
-  "cost": "+0.06 rendering error at 221 glyphs (83.28 -> 83.34)"
- },
- "engine_model": "every glyph pixel is an independent 4-bit palette index. At the target configuration (221 glyphs, inverse REMOVED) NextRowInv is gone, so slot ORDER carries no meaning - the complement pairing below is informational only and applies solely if inverse video is retained.",
- "hue_coverage": {
-  "rule": "one slot reserved per hue band the art uses above 0.2% of pixels",
-  "bands": [
-   "blue",
-   "cyan",
-   "green",
-   "magenta",
-   "orange",
-   "red",
-   "yellow"
-  ]
- },
+ "note": "Proposal only; graphics.asm is untouched. ADOPTED. Jay, 2026-08-01: \"+cyan and +blue is best\" - chosen over both the as-is palette and the cyan+magenta variant, and over the fully derived palette.",
+ "basis": "The palette already in the code, authored by Jay and L. Curtis Boyle with named colours, unchanged in all fourteen of its distinct entries. Slots 14 and 15 duplicated 0 and 1 to make COMA/COMB invert black<->white; with inverse video removed that pairing buys nothing, so the two slots were reclaimed for $03 cyan and $0E blue.",
+ "engine_model": "every glyph pixel is an independent 4-bit palette index. At the target configuration (221 glyphs, inverse REMOVED) NextRowInv is gone, so slot ORDER carries no rendering meaning.",
  "slots": [
   {
    "slot": 0,
    "value": "$00",
    "byte": 0,
+   "name": "Black",
    "rgb": [
     0,
     0,
     0
    ],
    "hue_band": "grey",
-   "complement_slot": 15,
-   "complement_value": "$30"
+   "reclaimed": false
   },
   {
    "slot": 1,
    "value": "$3F",
    "byte": 63,
+   "name": "White",
    "rgb": [
     255,
     255,
     255
    ],
    "hue_band": "grey",
-   "complement_slot": 14,
-   "complement_value": "$0A"
+   "reclaimed": false
   },
   {
    "slot": 2,
-   "value": "$0E",
-   "byte": 14,
+   "value": "$10",
+   "byte": 16,
+   "name": "Green",
    "rgb": [
-    85,
-    85,
-    170
+    0,
+    170,
+    0
    ],
-   "hue_band": "blue",
-   "complement_slot": 13,
-   "complement_value": "$01"
+   "hue_band": "green",
+   "reclaimed": false
   },
   {
    "slot": 3,
-   "value": "$1C",
-   "byte": 28,
+   "value": "$09",
+   "byte": 9,
+   "name": "Blue",
    "rgb": [
-    85,
-    170,
-    170
+    0,
+    0,
+    255
    ],
-   "hue_band": "cyan",
-   "complement_slot": 12,
-   "complement_value": "$35"
+   "hue_band": "blue",
+   "reclaimed": false
   },
   {
    "slot": 4,
-   "value": "$15",
-   "byte": 21,
+   "value": "$07",
+   "byte": 7,
+   "name": "Dark grey",
    "rgb": [
     85,
-    170,
+    85,
     85
    ],
-   "hue_band": "green",
-   "complement_slot": 11,
-   "complement_value": "$03"
+   "hue_band": "grey",
+   "reclaimed": false
   },
   {
    "slot": 5,
-   "value": "$2A",
-   "byte": 42,
+   "value": "$38",
+   "byte": 56,
+   "name": "Light grey",
    "rgb": [
     170,
-    85,
+    170,
     170
    ],
-   "hue_band": "magenta",
-   "complement_slot": 10,
-   "complement_value": "$38"
+   "hue_band": "grey",
+   "reclaimed": false
   },
   {
    "slot": 6,
    "value": "$22",
    "byte": 34,
+   "name": "Brown",
    "rgb": [
     170,
     85,
     0
    ],
    "hue_band": "orange",
-   "complement_slot": 9,
-   "complement_value": "$07"
+   "reclaimed": false
   },
   {
    "slot": 7,
-   "value": "$23",
-   "byte": 35,
+   "value": "$0B",
+   "byte": 11,
+   "name": "Light blue",
    "rgb": [
-    170,
+    0,
     85,
-    85
+    255
    ],
-   "hue_band": "red",
-   "complement_slot": 8,
-   "complement_value": "$06"
+   "hue_band": "blue",
+   "reclaimed": false
   },
   {
    "slot": 8,
-   "value": "$06",
-   "byte": 6,
+   "value": "$30",
+   "byte": 48,
+   "name": "Tanish",
    "rgb": [
-    85,
-    85,
+    170,
+    170,
     0
    ],
    "hue_band": "yellow",
-   "complement_slot": 7,
-   "complement_value": "$23"
+   "reclaimed": false
   },
   {
    "slot": 9,
-   "value": "$07",
-   "byte": 7,
+   "value": "$26",
+   "byte": 38,
+   "name": "Orange",
    "rgb": [
+    255,
     85,
-    85,
-    85
+    0
    ],
-   "hue_band": "grey",
-   "complement_slot": 6,
-   "complement_value": "$22"
+   "hue_band": "red",
+   "reclaimed": false
   },
   {
    "slot": 10,
-   "value": "$38",
-   "byte": 56,
+   "value": "$37",
+   "byte": 55,
+   "name": "Yellow",
    "rgb": [
-    170,
-    170,
-    170
+    255,
+    255,
+    85
    ],
-   "hue_band": "grey",
-   "complement_slot": 5,
-   "complement_value": "$2A"
+   "hue_band": "yellow",
+   "reclaimed": false
   },
   {
    "slot": 11,
+   "value": "$12",
+   "byte": 18,
+   "name": "Light green",
+   "rgb": [
+    0,
+    255,
+    0
+   ],
+   "hue_band": "green",
+   "reclaimed": false
+  },
+  {
+   "slot": 12,
+   "value": "$34",
+   "byte": 52,
+   "name": "Light orange",
+   "rgb": [
+    255,
+    170,
+    0
+   ],
+   "hue_band": "orange",
+   "reclaimed": false
+  },
+  {
+   "slot": 13,
+   "value": "$20",
+   "byte": 32,
+   "name": "Red",
+   "rgb": [
+    170,
+    0,
+    0
+   ],
+   "hue_band": "red",
+   "reclaimed": false
+  },
+  {
+   "slot": 14,
    "value": "$03",
    "byte": 3,
+   "name": "Cyan",
    "rgb": [
     0,
     85,
     85
    ],
    "hue_band": "cyan",
-   "complement_slot": 4,
-   "complement_value": "$15"
+   "reclaimed": true
   },
   {
-   "slot": 12,
-   "value": "$35",
-   "byte": 53,
+   "slot": 15,
+   "value": "$0E",
+   "byte": 14,
+   "name": "Blue (mid)",
    "rgb": [
-    255,
-    170,
-    85
-   ],
-   "hue_band": "orange",
-   "complement_slot": 3,
-   "complement_value": "$1C"
-  },
-  {
-   "slot": 13,
-   "value": "$01",
-   "byte": 1,
-   "rgb": [
-    0,
-    0,
-    85
-   ],
-   "hue_band": "blue",
-   "complement_slot": 2,
-   "complement_value": "$0E"
-  },
-  {
-   "slot": 14,
-   "value": "$0A",
-   "byte": 10,
-   "rgb": [
-    0,
+    85,
     85,
     170
    ],
    "hue_band": "blue",
-   "complement_slot": 1,
-   "complement_value": "$3F"
-  },
-  {
-   "slot": 15,
-   "value": "$30",
-   "byte": 48,
-   "rgb": [
-    170,
-    170,
-    0
-   ],
-   "hue_band": "yellow",
-   "complement_slot": 0,
-   "complement_value": "$00"
+   "reclaimed": true
   }
  ],
  "metrics": {
   "glyphs": 221,
   "inverse": "removed",
-  "rendering_error": 83.34,
-  "previous_error": 83.28,
-  "green_pixels_rendered_pct": 0.74,
-  "magenta_pixels_rendered_pct": 0.15,
-  "previous_green_pct": 0.0,
-  "previous_magenta_pct": 0.0
+  "rendering_error": 85.48,
+  "as_is_error": 90.12,
+  "recovered": 4.64,
+  "cyan_pixels_rendered_pct": 13.73
  },
- "ladder_unchanged": {
-  "128_inverse_kept": 102.34,
-  "192": 87.27,
-  "221": 83.34,
-  "256": 79.64,
-  "note": "ordering and gaps preserved; the C4 verdict (221 best) stands"
- }
+ "ladder": {
+  "128_inverse_kept": 105.83,
+  "192": 89.29,
+  "221": 85.48,
+  "256": 82.0,
+  "note": "ordering preserved; the C4 verdict (221 best) stands"
+ },
+ "open": [
+  "Green renders at 0.00%. Slots 2 and 11 hold $10 (0,170,0) and $12 (0,255,0), PETSCII-saturated; the art uses $14 (85,170,0) and $15 (85,170,85). Nothing in the artwork is near enough to select them. Retuning those two would put green on screen at no cost in slots - a separate change, not yet made.",
+  "Fully derived alternative scores 83.34 (2.14 lower) but discards the named colours. Rejected in favour of the authored palette."
+ ]
 }

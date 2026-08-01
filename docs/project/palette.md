@@ -1,7 +1,7 @@
 # Proposed CoCo3 palette, derived from the Amiga artwork
 
-**Status:** PROPOSAL, C2 re-derivation, **superseded C5 by the hue-covered variant**. Not applied;
-`src/graphics.asm` is untouched.
+**Status:** PROPOSAL. The C2 derivation below is **superseded** — C5 adopted the in-code palette
+with its two duplicate slots reclaimed. Not applied; `src/graphics.asm` is untouched.
 
 > ## Adopted palette — hue-covered
 >
