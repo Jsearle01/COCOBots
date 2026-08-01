@@ -39,6 +39,14 @@ sprite tables and the `GAMEOVER3` screen, and the glyphs text needs, removing in
 **Removing inverse is worth 3.26 points on its own** (113.64 → 110.38 at one pattern per group).
 Everything else in the table is the extra glyph slots, not the inverse removal.
 
+**4. Added after delivery, at Jay's request (§9): the bootloader is now costed**, and it is far
+cheaper than the table's "needs a bootloader" implies — **403 bytes, zero low RAM, and proven
+working on the sibling port**. Full costing in
+[`docs/project/loader-costing.md`](../project/loader-costing.md). It also turned up a correction to
+CLAUDE.md §2L: **the level-load routines do not exist** — only commented-out calls to them do
+(§7 flag 9). That does not change any figure above, but it changes what the bootloader row *means*:
+the cost is small and known, and the same work unblocks a feature the menu already advertises.
+
 ### 2 — Files
 
 **No file modified.** One added: this report. AC8 verified by hash in §5 — all four source files,
@@ -196,6 +204,20 @@ compression, and 79.57 remains **3.1× above the 25.31 floor**. Measured, not ex
 
 **AC7 — PASS.** §5. **No recommendation offered.**
 
+**Post-delivery addendum to AC7's risk column.** The comparison table costs the bootloader row as an
+unquantified dependency. It is now quantified (§9, and `docs/project/loader-costing.md`):
+
+| | |
+|---|---|
+| boot stub | **403 bytes**, runs from `$8000+` framebuffer space — **zero low RAM** |
+| disk primitive | **~310 bytes** (POP3_port `disk_read.s`, from its own linker map) |
+| resident level loader | **~440 bytes of low RAM**; 475 free at `$7E25-$7FFF` in the 256-glyph layout |
+| risk | **low** — karateka settled three DECB gates before authoring, all PASS, and logged the full `LOADM"BOOT":EXEC` path running under MAME |
+
+**The art-fidelity arithmetic is unchanged** — the bootloader still buys only 3.71 points and is
+still the worst step on the curve. What changes is that its cost is small, known, and copy-and-adapt
+rather than new development.
+
 **AC8 — PASS**, by hash — §5.
 
 ### 5 — Verdict-time evidence
@@ -320,12 +342,34 @@ history; 221 is correct.
    digits `$30-$39` and six punctuation marks. The 37-overlap match with §2M is strong corroboration,
    but a routine emitting a code outside that set would shift the accounting.
 
+9. **CLAUDE.md §2L reads as though the level-load routines exist and are switched off. They do not
+   exist.** §2L says *"`MAP_LOAD_ROUTINE` (line 295) and `TILE_LOAD_ROUTINE` (line 277) are commented
+   out with L. C. Boyle's note that restarting will not work correctly until this is done"* — which
+   is accurate about the **calls** and invites the reading that the **routines** are there. Searched:
+   both names, and `DISPLAY_LOAD_MESSAGE1/2`, appear in `PETROBOTS_6809.asm` **only** inside
+   commented-out `JSR` lines. There is no code behind any of them. `CYCLE_MAP` likewise only
+   increments `SELECTED_MAP`, wraps at 10 and redraws the name — it never loads. **Boyle's note is
+   about work not started, not work disabled.** §2D content, so the Orchestrator's to fold in.
+
+10. **The loader estimates are mine, except two.** 403 bytes and ~310 bytes are measured from built
+    artifacts; everything else in `loader-costing.md` §5 is judgement from reading the reference and
+    the call shapes, and could be 30% out either way. At ~490 B needed against 475 B free, that
+    margin matters — §6 of that document lists three ways to buy slack, the cheapest costing nothing
+    in fidelity.
+
 ### 8 — Follow-up candidates
 
 - **Decide what replaces the four direct-framebuffer inverses** (§7 flag 5). This is unavoidable
   under every option including do-nothing, because the C2 palette already breaks them. It may also
   be the cheapest thing on this list: a palette laid out so one pair is a deliberate
   highlight/normal inversion could fix all four without touching the engine.
+- **Correct CLAUDE.md §2L** (§7 flag 9) — it implies the level-load routines exist. §2D, Orchestrator's.
+- **Decide the level file-location scheme** — DECB directory walk on track 17, or fixed raw tracks
+  as karateka used. This single choice moves the loader estimate more than anything else in it
+  (`loader-costing.md` §7), and it decides whether the levels stay DECB files.
+- **Settle whether the resident loader needs ROM mapped in.** The primitive is raw FDC so probably
+  not, but karateka's stub notes `MC3=1` is required for the disk NMI handler in the constant page,
+  and this game runs ROMs-out. Needs checking against `sys.s` before anyone builds it.
 - **Settle the memory map discrepancy** (§7 flag 2) before anyone builds to a 19-byte slack.
 - **Trace `GAMEOVER3`'s renderer** (§7 flag 7) to confirm the accounting.
 - Carried, unchanged: pinned-digest check on the three source blobs (A1b §8); the three MAME idioms
@@ -334,24 +378,38 @@ history; 221 is correct.
 
 ### 9 — User interaction during task
 
-None. The dispatch was self-contained. Every judgment call is recorded in §7.
+None during the dispatch itself — it was self-contained, and every judgment call is in §7.
+
+**Two exchanges after delivery**, both of which extended the work:
+
+1. *"what if we used a boot loader to bypass the decb restrictions"* — answered from the C3 figures:
+   it makes 256 glyphs fit with 947 bytes slack, but is worth only 3.71 points, the worst step on the
+   curve. Noted that the real case for it is level loading, not glyph slots.
+2. *"do it"* — cost the loader properly against the references. Produced
+   `docs/project/loader-costing.md`: 403 B boot stub at zero low-RAM cost, ~310 B disk primitive,
+   ~440 B resident loader against 475 B free, and the boot path verified working on karateka. **It
+   also established that the level-load routines do not exist** (§7 flag 9), which is a correction to
+   how CLAUDE.md §2L reads rather than a new measurement.
 
 ### 10 — Candidate(s) captured this task
 
-Two new rows in `seeds/cocobots/live/`, pool commit **`a2ef644`**. **New rows only.**
+Three rows in `seeds/cocobots/live/` — pool commits **`a2ef644`** (two, from the dispatch) and
+**`b58d695`** (one, from the post-delivery loader costing). **New rows only.**
 
 | slug | one line |
 |---|---|
 | `a-second-implementation-of-the-same-feature-hides-from-the-obvious-search` | The feature's name finds one implementation; the others are only visible by their *mechanism*, and removing the named one leaves the feature working |
 | `scope-the-inventory-to-every-producer-not-the-largest-one` | A budget counted over the biggest data source understated the requirement by 41 slots and turned a feasible option into an infeasible one |
+| `a-commented-out-call-is-not-a-disabled-feature` | A commented-out call is evidence about the *call*, not the callee — search for the definition, because "disabled" and "never written" look identical at the call site |
 
 ### 11 — Commit
 
 | | |
 |---|---|
-| this report | committed separately; SHA in the delivering message per §7 |
+| this report | `79a4a49624b43f96cbfcff6f9dc3c6304bc21bd2`, then updated post-delivery |
+| loader costing | **`d3c4ecc281861114b539f669cea67d676cff8772`** — `docs/project/loader-costing.md` |
 | branch | `wip`, pushed |
 | `main` | untouched at `a62809e` |
-| pool | **`a2ef644`**, pushed |
+| pool | **`a2ef644`** + **`b58d695`**, pushed |
 
 Working tree clean. Nothing implemented; no shipped asset modified.
