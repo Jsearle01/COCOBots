@@ -1,86 +1,12 @@
 {
- "SUPERSEDED": true,
- "do_not_consume": "Glyphs are 16-colour capable (64 independent 4-bit indices per glyph); this derivation modelled each 8x8 cell as one ink + one paper colour. Only 6.8% of cells are describable that way and the reduction captured 69.4% of pixels, seeing 26 of the 46 colours actually present. Colours, complement demand, survival figures and the glyph-splitting ceiling are all invalid. Re-derivation required.",
- "superseded_on": "2026-08-01",
- "superseded_by": "Jay, during C2 delivery",
- "still_valid": [
-  "ordering structure: index i pairs with 15-i under COMA/COMB",
-  "only glyphs used both normally and inverted impose constraints",
-  "sampling population: 186 live+informative tiles, 1417 cells, 55 glyphs",
-  "C1 identity correspondence (did not use the colour model)"
- ],
  "source_sheet": "art/Amiga_Artwork.png",
- "derived": "2026-08-01, dispatch C2",
+ "derived": "2026-08-01, dispatch C2 (re-derived under the 16-colour glyph model)",
  "applied": false,
  "note": "Proposal only. C3 applies this; graphics.asm is untouched.",
+ "engine_model": "every glyph pixel is an independent 4-bit palette index; NextRowInv complements each one (i -> 15-i)",
  "slots": [
   {
    "slot": 0,
-   "value": "$00",
-   "byte": 0,
-   "rgb": [
-    0,
-    0,
-    0
-   ],
-   "complement_slot": 15,
-   "complement_value": "$00",
-   "demand_weight": 862
-  },
-  {
-   "slot": 1,
-   "value": "$07",
-   "byte": 7,
-   "rgb": [
-    85,
-    85,
-    85
-   ],
-   "complement_slot": 14,
-   "complement_value": "$38",
-   "demand_weight": 580
-  },
-  {
-   "slot": 2,
-   "value": "$0A",
-   "byte": 10,
-   "rgb": [
-    0,
-    85,
-    170
-   ],
-   "complement_slot": 13,
-   "complement_value": "$01",
-   "demand_weight": 135
-  },
-  {
-   "slot": 3,
-   "value": "$3F",
-   "byte": 63,
-   "rgb": [
-    255,
-    255,
-    255
-   ],
-   "complement_slot": 12,
-   "complement_value": "$06",
-   "demand_weight": 98
-  },
-  {
-   "slot": 4,
-   "value": "$0E",
-   "byte": 14,
-   "rgb": [
-    85,
-    85,
-    170
-   ],
-   "complement_slot": 11,
-   "complement_value": "$1C",
-   "demand_weight": 116
-  },
-  {
-   "slot": 5,
    "value": "$22",
    "byte": 34,
    "rgb": [
@@ -88,77 +14,25 @@
     85,
     0
    ],
-   "complement_slot": 10,
-   "complement_value": "$39",
-   "demand_weight": 83
+   "complement_slot": 15,
+   "complement_value": "$3F",
+   "demand_pixels": 2396
   },
   {
-   "slot": 6,
-   "value": "$03",
-   "byte": 3,
+   "slot": 1,
+   "value": "$31",
+   "byte": 49,
    "rgb": [
-    0,
-    85,
+    170,
+    170,
     85
    ],
-   "complement_slot": 9,
-   "complement_value": "$23",
-   "demand_weight": 44
+   "complement_slot": 14,
+   "complement_value": "$01",
+   "demand_pixels": 1096
   },
   {
-   "slot": 7,
-   "value": "$30",
-   "byte": 48,
-   "rgb": [
-    170,
-    170,
-    0
-   ],
-   "complement_slot": 8,
-   "complement_value": "$3C",
-   "demand_weight": 16
-  },
-  {
-   "slot": 8,
-   "value": "$3C",
-   "byte": 60,
-   "rgb": [
-    255,
-    170,
-    170
-   ],
-   "complement_slot": 7,
-   "complement_value": "$30",
-   "demand_weight": 13
-  },
-  {
-   "slot": 9,
-   "value": "$23",
-   "byte": 35,
-   "rgb": [
-    170,
-    85,
-    85
-   ],
-   "complement_slot": 6,
-   "complement_value": "$03",
-   "demand_weight": 35
-  },
-  {
-   "slot": 10,
-   "value": "$39",
-   "byte": 57,
-   "rgb": [
-    170,
-    170,
-    255
-   ],
-   "complement_slot": 5,
-   "complement_value": "$22",
-   "demand_weight": 84
-  },
-  {
-   "slot": 11,
+   "slot": 2,
    "value": "$1C",
    "byte": 28,
    "rgb": [
@@ -166,12 +40,12 @@
     170,
     170
    ],
-   "complement_slot": 4,
-   "complement_value": "$0E",
-   "demand_weight": 111
+   "complement_slot": 13,
+   "complement_value": "$03",
+   "demand_pixels": 3879
   },
   {
-   "slot": 12,
+   "slot": 3,
    "value": "$06",
    "byte": 6,
    "rgb": [
@@ -179,38 +53,64 @@
     85,
     0
    ],
-   "complement_slot": 3,
-   "complement_value": "$3F",
-   "demand_weight": 96
+   "complement_slot": 12,
+   "complement_value": "$38",
+   "demand_pixels": 2751
   },
   {
-   "slot": 13,
-   "value": "$01",
-   "byte": 1,
+   "slot": 4,
+   "value": "$39",
+   "byte": 57,
    "rgb": [
-    0,
-    0,
-    85
+    170,
+    170,
+    255
    ],
-   "complement_slot": 2,
-   "complement_value": "$0A",
-   "demand_weight": 188
+   "complement_slot": 11,
+   "complement_value": "$30",
+   "demand_pixels": 1862
   },
   {
-   "slot": 14,
-   "value": "$38",
-   "byte": 56,
+   "slot": 5,
+   "value": "$0E",
+   "byte": 14,
    "rgb": [
-    170,
-    170,
+    85,
+    85,
     170
    ],
-   "complement_slot": 1,
-   "complement_value": "$07",
-   "demand_weight": 309
+   "complement_slot": 10,
+   "complement_value": "$23",
+   "demand_pixels": 4827
   },
   {
-   "slot": 15,
+   "slot": 6,
+   "value": "$08",
+   "byte": 8,
+   "rgb": [
+    0,
+    0,
+    170
+   ],
+   "complement_slot": 9,
+   "complement_value": "$0A",
+   "demand_pixels": 738
+  },
+  {
+   "slot": 7,
+   "value": "$07",
+   "byte": 7,
+   "rgb": [
+    85,
+    85,
+    85
+   ],
+   "complement_slot": 8,
+   "complement_value": "$00",
+   "demand_pixels": 12436
+  },
+  {
+   "slot": 8,
    "value": "$00",
    "byte": 0,
    "rgb": [
@@ -218,9 +118,100 @@
     0,
     0
    ],
+   "complement_slot": 7,
+   "complement_value": "$07",
+   "demand_pixels": 26583
+  },
+  {
+   "slot": 9,
+   "value": "$0A",
+   "byte": 10,
+   "rgb": [
+    0,
+    85,
+    170
+   ],
+   "complement_slot": 6,
+   "complement_value": "$08",
+   "demand_pixels": 4399
+  },
+  {
+   "slot": 10,
+   "value": "$23",
+   "byte": 35,
+   "rgb": [
+    170,
+    85,
+    85
+   ],
+   "complement_slot": 5,
+   "complement_value": "$0E",
+   "demand_pixels": 1366
+  },
+  {
+   "slot": 11,
+   "value": "$30",
+   "byte": 48,
+   "rgb": [
+    170,
+    170,
+    0
+   ],
+   "complement_slot": 4,
+   "complement_value": "$39",
+   "demand_pixels": 754
+  },
+  {
+   "slot": 12,
+   "value": "$38",
+   "byte": 56,
+   "rgb": [
+    170,
+    170,
+    170
+   ],
+   "complement_slot": 3,
+   "complement_value": "$06",
+   "demand_pixels": 12892
+  },
+  {
+   "slot": 13,
+   "value": "$03",
+   "byte": 3,
+   "rgb": [
+    0,
+    85,
+    85
+   ],
+   "complement_slot": 2,
+   "complement_value": "$1C",
+   "demand_pixels": 3048
+  },
+  {
+   "slot": 14,
+   "value": "$01",
+   "byte": 1,
+   "rgb": [
+    0,
+    0,
+    85
+   ],
+   "complement_slot": 1,
+   "complement_value": "$31",
+   "demand_pixels": 5006
+  },
+  {
+   "slot": 15,
+   "value": "$3F",
+   "byte": 63,
+   "rgb": [
+    255,
+    255,
+    255
+   ],
    "complement_slot": 0,
-   "complement_value": "$00",
-   "demand_weight": 862
+   "complement_value": "$22",
+   "demand_pixels": 2007
   }
  ],
  "complement_pairs": [
@@ -230,11 +221,10 @@
     15
    ],
    "colours": [
-    "$00",
-    "$00"
+    "$22",
+    "$3F"
    ],
-   "self_paired": true,
-   "demand_weight": 192.1
+   "self_paired": false
   },
   {
    "slots": [
@@ -242,11 +232,10 @@
     14
    ],
    "colours": [
-    "$07",
-    "$38"
+    "$31",
+    "$01"
    ],
-   "self_paired": false,
-   "demand_weight": 130.8
+   "self_paired": false
   },
   {
    "slots": [
@@ -254,11 +243,10 @@
     13
    ],
    "colours": [
-    "$0A",
-    "$01"
+    "$1C",
+    "$03"
    ],
-   "self_paired": false,
-   "demand_weight": 4.0
+   "self_paired": false
   },
   {
    "slots": [
@@ -266,11 +254,10 @@
     12
    ],
    "colours": [
-    "$3F",
-    "$06"
+    "$06",
+    "$38"
    ],
-   "self_paired": false,
-   "demand_weight": 21.9
+   "self_paired": false
   },
   {
    "slots": [
@@ -278,11 +265,10 @@
     11
    ],
    "colours": [
-    "$0E",
-    "$1C"
+    "$39",
+    "$30"
    ],
-   "self_paired": false,
-   "demand_weight": 4.0
+   "self_paired": false
   },
   {
    "slots": [
@@ -290,11 +276,10 @@
     10
    ],
    "colours": [
-    "$22",
-    "$39"
+    "$0E",
+    "$23"
    ],
-   "self_paired": false,
-   "demand_weight": 27.0
+   "self_paired": false
   },
   {
    "slots": [
@@ -302,11 +287,10 @@
     9
    ],
    "colours": [
-    "$03",
-    "$23"
+    "$08",
+    "$0A"
    ],
-   "self_paired": false,
-   "demand_weight": 0.0
+   "self_paired": false
   },
   {
    "slots": [
@@ -314,492 +298,51 @@
     8
    ],
    "colours": [
-    "$30",
-    "$3C"
+    "$07",
+    "$00"
    ],
-   "self_paired": false,
-   "demand_weight": 0.0
+   "self_paired": false
   }
  ],
- "metrics": {
-  "weighted_mean_error": 2.093,
-  "distinct_colours": 15,
-  "complement_demand_satisfied_pct": 19.2,
-  "cells_sampled": 1417,
-  "normal_cells": 748,
-  "normal_survival_pct": 34.2,
-  "inverse_cells": 669,
-  "inverse_survival_pct": 25.9,
-  "ordering_efficiency_pct": 75.6
+ "error_decomposition": {
+  "pixels": 90688,
+  "floor": 20.4,
+  "sharing": 95.08,
+  "actual": 98.75,
+  "cost_of_sharing": 74.67,
+  "cost_of_complement": 3.67
  },
- "inverse_failures_by_tile": [
+ "glyph_variants": [
   {
-   "tile": 12,
-   "cells": 9
+   "variants": 1,
+   "glyph_slots": 55,
+   "rms": 98.75
   },
   {
-   "tile": 82,
-   "cells": 9
+   "variants": 2,
+   "glyph_slots": 95,
+   "rms": 93.85
   },
   {
-   "tile": 197,
-   "cells": 9
+   "variants": 3,
+   "glyph_slots": 131,
+   "rms": 83.2
   },
   {
-   "tile": 242,
-   "cells": 9
+   "variants": 4,
+   "glyph_slots": 165,
+   "rms": 79.02
   },
   {
-   "tile": 8,
-   "cells": 8
+   "variants": 5,
+   "glyph_slots": 197,
+   "rms": 75.27
   },
   {
-   "tile": 15,
-   "cells": 8
-  },
-  {
-   "tile": 19,
-   "cells": 8
-  },
-  {
-   "tile": 48,
-   "cells": 8
-  },
-  {
-   "tile": 76,
-   "cells": 8
-  },
-  {
-   "tile": 94,
-   "cells": 8
-  },
-  {
-   "tile": 106,
-   "cells": 8
-  },
-  {
-   "tile": 7,
-   "cells": 7
-  },
-  {
-   "tile": 10,
-   "cells": 7
-  },
-  {
-   "tile": 26,
-   "cells": 7
-  },
-  {
-   "tile": 50,
-   "cells": 7
-  },
-  {
-   "tile": 90,
-   "cells": 7
-  },
-  {
-   "tile": 92,
-   "cells": 7
-  },
-  {
-   "tile": 93,
-   "cells": 7
-  },
-  {
-   "tile": 105,
-   "cells": 7
-  },
-  {
-   "tile": 174,
-   "cells": 7
-  },
-  {
-   "tile": 177,
-   "cells": 7
-  },
-  {
-   "tile": 196,
-   "cells": 7
-  },
-  {
-   "tile": 4,
-   "cells": 6
-  },
-  {
-   "tile": 11,
-   "cells": 6
-  },
-  {
-   "tile": 17,
-   "cells": 6
-  },
-  {
-   "tile": 56,
-   "cells": 6
-  },
-  {
-   "tile": 62,
-   "cells": 6
-  },
-  {
-   "tile": 68,
-   "cells": 6
-  },
-  {
-   "tile": 71,
-   "cells": 6
-  },
-  {
-   "tile": 72,
-   "cells": 6
-  },
-  {
-   "tile": 79,
-   "cells": 6
-  },
-  {
-   "tile": 80,
-   "cells": 6
-  },
-  {
-   "tile": 81,
-   "cells": 6
-  },
-  {
-   "tile": 114,
-   "cells": 6
-  },
-  {
-   "tile": 129,
-   "cells": 6
-  },
-  {
-   "tile": 176,
-   "cells": 6
-  },
-  {
-   "tile": 187,
-   "cells": 6
-  },
-  {
-   "tile": 191,
-   "cells": 6
-  },
-  {
-   "tile": 201,
-   "cells": 6
-  },
-  {
-   "tile": 49,
-   "cells": 5
-  },
-  {
-   "tile": 52,
-   "cells": 5
-  },
-  {
-   "tile": 64,
-   "cells": 5
-  },
-  {
-   "tile": 75,
-   "cells": 5
-  },
-  {
-   "tile": 91,
-   "cells": 5
-  },
-  {
-   "tile": 112,
-   "cells": 5
-  },
-  {
-   "tile": 113,
-   "cells": 5
-  },
-  {
-   "tile": 119,
-   "cells": 5
-  },
-  {
-   "tile": 144,
-   "cells": 5
-  },
-  {
-   "tile": 145,
-   "cells": 5
-  },
-  {
-   "tile": 178,
-   "cells": 5
-  },
-  {
-   "tile": 179,
-   "cells": 5
-  },
-  {
-   "tile": 205,
-   "cells": 5
-  },
-  {
-   "tile": 6,
-   "cells": 4
-  },
-  {
-   "tile": 25,
-   "cells": 4
-  },
-  {
-   "tile": 27,
-   "cells": 4
-  },
-  {
-   "tile": 28,
-   "cells": 4
-  },
-  {
-   "tile": 41,
-   "cells": 4
-  },
-  {
-   "tile": 42,
-   "cells": 4
-  },
-  {
-   "tile": 63,
-   "cells": 4
-  },
-  {
-   "tile": 104,
-   "cells": 4
-  },
-  {
-   "tile": 138,
-   "cells": 4
-  },
-  {
-   "tile": 143,
-   "cells": 4
-  },
-  {
-   "tile": 198,
-   "cells": 4
-  },
-  {
-   "tile": 199,
-   "cells": 4
-  },
-  {
-   "tile": 5,
-   "cells": 3
-  },
-  {
-   "tile": 16,
-   "cells": 3
-  },
-  {
-   "tile": 18,
-   "cells": 3
-  },
-  {
-   "tile": 33,
-   "cells": 3
-  },
-  {
-   "tile": 37,
-   "cells": 3
-  },
-  {
-   "tile": 51,
-   "cells": 3
-  },
-  {
-   "tile": 53,
-   "cells": 3
-  },
-  {
-   "tile": 54,
-   "cells": 3
-  },
-  {
-   "tile": 57,
-   "cells": 3
-  },
-  {
-   "tile": 65,
-   "cells": 3
-  },
-  {
-   "tile": 83,
-   "cells": 3
-  },
-  {
-   "tile": 87,
-   "cells": 3
-  },
-  {
-   "tile": 95,
-   "cells": 3
-  },
-  {
-   "tile": 107,
-   "cells": 3
-  },
-  {
-   "tile": 132,
-   "cells": 3
-  },
-  {
-   "tile": 166,
-   "cells": 3
-  },
-  {
-   "tile": 171,
-   "cells": 3
-  },
-  {
-   "tile": 195,
-   "cells": 3
-  },
-  {
-   "tile": 200,
-   "cells": 3
-  },
-  {
-   "tile": 202,
-   "cells": 3
-  },
-  {
-   "tile": 203,
-   "cells": 3
-  },
-  {
-   "tile": 13,
-   "cells": 2
-  },
-  {
-   "tile": 20,
-   "cells": 2
-  },
-  {
-   "tile": 39,
-   "cells": 2
-  },
-  {
-   "tile": 45,
-   "cells": 2
-  },
-  {
-   "tile": 46,
-   "cells": 2
-  },
-  {
-   "tile": 66,
-   "cells": 2
-  },
-  {
-   "tile": 67,
-   "cells": 2
-  },
-  {
-   "tile": 118,
-   "cells": 2
-  },
-  {
-   "tile": 120,
-   "cells": 2
-  },
-  {
-   "tile": 128,
-   "cells": 2
-  },
-  {
-   "tile": 131,
-   "cells": 2
-  },
-  {
-   "tile": 133,
-   "cells": 2
-  },
-  {
-   "tile": 137,
-   "cells": 2
-  },
-  {
-   "tile": 139,
-   "cells": 2
-  },
-  {
-   "tile": 167,
-   "cells": 2
-  },
-  {
-   "tile": 170,
-   "cells": 2
-  },
-  {
-   "tile": 180,
-   "cells": 2
-  },
-  {
-   "tile": 22,
-   "cells": 1
-  },
-  {
-   "tile": 24,
-   "cells": 1
-  },
-  {
-   "tile": 29,
-   "cells": 1
-  },
-  {
-   "tile": 32,
-   "cells": 1
-  },
-  {
-   "tile": 35,
-   "cells": 1
-  },
-  {
-   "tile": 36,
-   "cells": 1
-  },
-  {
-   "tile": 43,
-   "cells": 1
-  },
-  {
-   "tile": 58,
-   "cells": 1
-  },
-  {
-   "tile": 109,
-   "cells": 1
-  },
-  {
-   "tile": 110,
-   "cells": 1
-  },
-  {
-   "tile": 116,
-   "cells": 1
-  },
-  {
-   "tile": 117,
-   "cells": 1
-  },
-  {
-   "tile": 121,
-   "cells": 1
-  },
-  {
-   "tile": 149,
-   "cells": 1
-  },
-  {
-   "tile": 168,
-   "cells": 1
+   "variants": 6,
+   "glyph_slots": 228,
+   "rms": 72.79
   }
- ]
+ ],
+ "cells_sampled": 1417
 }

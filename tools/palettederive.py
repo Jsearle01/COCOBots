@@ -1,47 +1,58 @@
 #!/usr/bin/env python3
 """
-palettederive.py — derive a 16-entry CoCo3 palette from the Amiga artwork,
-IN SLOT ORDER, and measure whether that order survives inverse video.
+palettederive.py — derive a 16-entry CoCo3 palette from the Amiga artwork, in
+slot order, under the engine's ACTUAL glyph model.
 
-C2 recon. Produces a proposal and its evidence. Applies nothing.
+C2 (re-derivation). Produces a proposal and its evidence. Applies nothing.
 
-THE TWO PROBLEMS, WHICH ARE SEPARATE
+THE ENGINE MODEL — established from BITMAP_PLOTTER, not assumed
+---------------------------------------------------------------
+`DoRegular` copies a glyph's bytes to the framebuffer unmodified:
 
-  which 16 colours   The GIME palette is screen-wide ($FFB0-$FFBF, no per-tile
-                     palette), so colour use is computed across the whole sheet
-                     and weighted by how often it is actually drawn.
+    NextRowRegular:  PULU D,Y / STD ,X / STY 2,X
 
-  which slot each    NextRowInv implements inverse video with COMA/COMB, which
-  goes in            complements all four bits: index i pairs with 15-i. 852 of
-                     2,303 tile cells use the inverse bit. Get the order wrong
-                     and a third of the tileset inverts to arbitrary colours.
+Four bytes per row, 4bpp, so **every one of a glyph's 64 pixels is an
+independent 4-bit palette index**. A glyph is fully 16-colour capable; the
+shipped font is 2-colour by deliberate choice, not by format (CLAUDE.md §4).
 
-WHY THE ORDERING REDUCES TO A PAIRING
+`NextRowInv` applies COMA/COMB, complementing every nibble, so an inverted
+glyph renders pixel p as palette[15 - I_p] — per pixel, independently.
 
-A glyph carries palette INDICES in its nibbles. Say glyph g uses index I for its
-ink pixels and P for its paper pixels. Rendered normally a cell shows
-(palette[I], palette[P]); rendered inverse it shows (palette[15-I], palette[15-P]).
+    normal   cell shows  palette[I_p]        for each pixel p
+    inverse  cell shows  palette[15 - I_p]   for each pixel p
 
-The same glyph is used in both kinds of cell. So if the art wants (A_ink, A_paper)
-where g appears normally and (C_ink, C_paper) where it appears inverted, then A_ink
-and C_ink must sit at complementary indices, and so must A_paper and C_paper.
+An earlier version of this file modelled each 8x8 cell as one ink colour plus
+one paper colour. That binary reduction is correct in tilecorr.py, where it
+matches SHAPES against a monochrome font; as a COLOUR model it is wrong. Only
+6.8% of art cells are describable with two colours, the reduction captured
+69.4% of pixels, and it saw 26 of the 46 colours actually present.
 
-Consequence: WHICH index-pair a colour-pair occupies does not matter — every pair
-(i, 15-i) is equivalent, and swapping within a pair only relabels I and P. The
-whole ordering problem is therefore **partitioning the 16 chosen colours into 8
-complement pairs**, which is a maximum-weight perfect matching, solved exactly
-here by DP over subsets (16 nodes).
+WHY THE ORDERING IS A PAIRING, AND WHY THAT IS NOW THE WHOLE PROBLEM
+--------------------------------------------------------------------
+Choosing index i for a pixel selects BOTH what it shows normally (palette[i])
+and what it shows inverted (palette[15-i]). So a palette is characterised
+entirely by its 8 complement pairs: each pixel picks one of 16 options, being
+8 pairs x 2 orientations. Which slot a pair occupies is irrelevant.
 
-SAMPLING
+The optimisation is therefore: choose 8 unordered colour pairs from the GIME 64
+minimising total rendering error. Solved here by greedy seed + local search over
+candidate pairs, with the per-pixel index choice solved exactly (16-way argmin)
+inside every evaluation.
 
-Rows of assets/tile-correspondence.json with live AND informative true (C1 §8:
-filter on informative, not confidence — a blank tile scores 1.000 against any
-uniform art tile and carries no colour). Cells whose glyph is $55 or $66 are
-excluded; both are corrupt (CLAUDE.md §2J) and are the only two glyphs in the
-addressable font with nibbles outside {0,1}. 186 tiles, 1,417 cells, 55 glyphs.
+ERROR DECOMPOSITION — what each constraint actually costs
+---------------------------------------------------------
+    floor        each cell picks freely per pixel      (palette quantisation only)
+    + sharing    one pattern per glyph, but inverse
+                 cells allowed their own pattern       (one-glyph-one-pattern, §2M inv. 1)
+    + complement inverse forced through 15-i           (the ordering)
+
+Reported as mean per-pixel RGB distance so the three are directly comparable.
+This replaces the earlier "survival fraction", which a 1-colour palette
+maximised at 100%.
 
 Usage:
     palettederive.py --sheet art/Amiga_Artwork.png --json assets/palette.json
+                     --render build/c2/preview.png
     palettederive.py --sheet art/coco_ArtworkSheet.png --control
 """
 
@@ -55,10 +66,9 @@ from PIL import Image
 
 sys.path.insert(0, 'tools')
 import tilecorr
-import decbmerge
 
 CORRUPT = (0x55, 0x66)
-LEVELS = ['assets/levels/level_%s.bin' % c for c in 'abcdefghij']
+NPIX = 64
 
 
 # ------------------------------------------------------------------ gamut ---
@@ -69,546 +79,492 @@ def gime_rgb(byte):
     return np.array([r * 85, g * 85, b * 85], dtype=float)
 
 
-GAMUT = np.array([gime_rgb(b) for b in range(64)])       # 64 x 3
-RGB_TO_BYTE = {tuple(GAMUT[b].astype(int)): b for b in range(64)}
+GAMUT = np.array([gime_rgb(b) for b in range(64)])
+D2 = ((GAMUT[:, None, :] - GAMUT[None, :, :]) ** 2).sum(axis=2)   # 64x64 sq dist
 
 
-def snap_index(px):
-    """Nearest GIME byte index for an RGB triple."""
-    return int(np.argmin(((GAMUT - px) ** 2).sum(axis=1)))
-
-
-# ----------------------------------------------------------------- weights --
-def level_tile_counts():
-    """How often each tile index appears across the ten level maps."""
-    c = collections.Counter()
-    for path in LEVELS:
-        segs, _ = decbmerge.read_decb(path)
-        (_, blob), = segs
-        c.update(blob[512:512 + 8192])
-    return c
-
-
-# ----------------------------------------------------------------- sampling --
-def sample(sheet, rows, tiles, glyph_ink):
-    """One record per sampled cell.
-
-    Each record carries the two dominant GIME colours of the art cell, split
-    into ink and paper by MAJORITY VOTE against the glyph's own ink mask — so
-    the assignment comes from the tileset side, not from guessing which of the
-    two art colours is foreground.
-    """
-    img = np.asarray(Image.open(sheet).convert('RGB'))
-    out = []
-    for r in rows:
-        t = r['tile']
-        ty, tx = divmod(t, 16)
-        tile_img = img[ty * 24:ty * 24 + 24, tx * 24:tx * 24 + 24]
-        for k in range(9):
-            code = tiles[t][k]
-            if code is None or (code & 0x7F) in CORRUPT:
-                continue
-            g = code & 0x7F
-            inv = bool(code & 0x80)
-            cy, cx = divmod(k, 3)
-            cell = tile_img[cy * 8:cy * 8 + 8, cx * 8:cx * 8 + 8]
-
-            q = np.array([[snap_index(cell[y, x]) for x in range(8)]
-                          for y in range(8)])
-            vals, counts = np.unique(q, return_counts=True)
-            order = np.argsort(-counts)
-            c0 = int(vals[order[0]])
-            c1 = int(vals[order[1]]) if len(vals) > 1 else c0
-
-            # which of c0/c1 sits under the glyph's ink pixels?
-            mask = glyph_ink[g]
-            if inv:
-                mask = ~mask
-            d0 = ((GAMUT[q] - GAMUT[c0]) ** 2).sum(axis=2)
-            d1 = ((GAMUT[q] - GAMUT[c1]) ** 2).sum(axis=2)
-            near0 = d0 <= d1
-            ink_is_c0 = (near0 & mask).sum() >= (near0 & ~mask).sum()
-            ink, paper = (c0, c1) if ink_is_c0 else (c1, c0)
-
-            out.append(dict(tile=t, cell=k, glyph=g, inverse=inv,
-                            ink=ink, paper=paper))
-    return out
-
-
-# ------------------------------------------------------- colour selection ---
-def choose16(weights, seed_error_only=True):
-    """Pick 16 GIME indices minimising weighted squared error to the demand.
-
-    weights: {gime_index: weight}. Greedy seed, then local search over swaps.
-    """
-    demand = np.array(sorted(weights.items()))
-    idx = demand[:, 0].astype(int)
-    w = demand[:, 1].astype(float)
-    pts = GAMUT[idx]
-
-    def cost(sel):
-        d = ((pts[:, None, :] - GAMUT[list(sel)][None, :, :]) ** 2).sum(axis=2)
-        return float((w * d.min(axis=1)).sum())
-
-    sel = []
-    for _ in range(16):
-        best, bc = None, None
-        for c in range(64):
-            if c in sel:
-                continue
-            v = cost(sel + [c])
-            if bc is None or v < bc:
-                best, bc = c, v
-        sel.append(best)
-
-    improved = True
-    while improved:
-        improved = False
-        cur = cost(sel)
-        for i in range(16):
-            for c in range(64):
-                if c in sel:
-                    continue
-                trial = list(sel)
-                trial[i] = c
-                v = cost(trial)
-                if v < cur - 1e-9:
-                    sel, cur, improved = trial, v, True
-    return sorted(sel)
-
-
-def weighted_mean_error(sel, weights):
-    """Mean per-pixel Euclidean RGB distance to the nearest chosen entry."""
-    tot = num = 0.0
-    for gi, wt in weights.items():
-        d = np.sqrt(((GAMUT[list(sel)] - GAMUT[gi]) ** 2).sum(axis=1)).min()
-        num += wt * d
-        tot += wt
-    return num / tot if tot else 0.0
-
-
-# ------------------------------------------------------------- the pairing --
-def best_matching(nodes, pairw):
-    """Exact maximum-weight perfect matching on 16 nodes, DP over subsets."""
-    n = len(nodes)
-    full = 1 << n
-    best = [None] * full
-    best[0] = (0.0, [])
-    for mask in range(full):
-        if best[mask] is None:
-            continue
-        # lowest unmatched node
-        i = 0
-        while i < n and (mask >> i) & 1:
-            i += 1
-        if i == n:
-            continue
-        for j in range(i + 1, n):
-            if (mask >> j) & 1:
-                continue
-            nm = mask | (1 << i) | (1 << j)
-            w = best[mask][0] + pairw.get(frozenset((nodes[i], nodes[j])), 0.0)
-            if best[nm] is None or w > best[nm][0]:
-                best[nm] = (w, best[mask][1] + [(nodes[i], nodes[j])])
-    return best[full - 1]
-
-
-def build_palette(pairs):
-    """Lay 8 colour-pairs into slots so each pair sits at (i, 15-i)."""
-    pal = [None] * 16
-    for slot, (a, b) in enumerate(pairs):
-        pal[slot] = a
-        pal[15 - slot] = b
-    return pal
-
-
-# ------------------------------------------------------ complement demand ---
-def complement_demand(recs):
-    """Which colours the art requires to sit at complementary indices.
-
-    Only glyphs used BOTH normally and inverted constrain anything: a glyph that
-    never renders inverted can take any pair of indices.
-
-    Built as a SOFT outer product over cell pairs rather than a majority vote.
-    Majority is brittle here — dominance of the modal colour ranges from 22% to
-    99% across glyphs, so a hard vote would assert a constraint from a 22%
-    plurality with the same confidence as one from a 95% consensus.
-    Each glyph contributes total weight (n_normal + n_inverse), spread over the
-    pairs its cells actually witness.
-    """
-    byg = collections.defaultdict(lambda: {'n': [], 'i': []})
-    for r in recs:
-        byg[r['glyph']]['i' if r['inverse'] else 'n'].append(r)
-
-    dem = collections.Counter()
-    stats = []
-    for g, d in byg.items():
-        n, i = d['n'], d['i']
-        if not n or not i:
-            continue
-        wt = (len(n) + len(i)) / float(len(n) * len(i))
-        for a in n:
-            for b in i:
-                dem[frozenset((a['ink'], b['ink']))] += wt
-                dem[frozenset((a['paper'], b['paper']))] += wt
-        stats.append((len(n) + len(i), g, len(n), len(i)))
-    return dem, sorted(stats, reverse=True), byg
-
-
-def satisfied_weight(pal, dem):
-    """Demand weight whose pair sits at complementary slots in `pal`."""
-    have = {frozenset((pal[i], pal[15 - i])) for i in range(8)}
-    ok = sum(w for p, w in dem.items() if p in have)
-    return ok, sum(dem.values())
-
-
-# -------------------------------------------------------- inverse-cell test --
-def assign_glyph_indices(recs, pal):
-    """Per glyph, the (ink, paper) palette indices C3 would most plausibly pick.
-
-    Votes from normal cells are direct; votes from inverse cells go through the
-    complement, because that is how they will render. Weighted equally per cell.
-    """
-    def nearest_slot(c):
-        d = ((np.array([GAMUT[p] for p in pal]) - GAMUT[c]) ** 2).sum(axis=1)
-        return int(np.argmin(d))
-
-    near = {c: nearest_slot(c) for c in range(64)}
-    votes = collections.defaultdict(lambda: (collections.Counter(),
-                                             collections.Counter()))
-    for r in recs:
-        vi, vp = votes[r['glyph']]
-        si, sp = near[r['ink']], near[r['paper']]
-        if r['inverse']:
-            si, sp = 15 - si, 15 - sp
-        vi[si] += 1
-        vp[sp] += 1
-    return {g: (vi.most_common(1)[0][0], vp.most_common(1)[0][0])
-            for g, (vi, vp) in votes.items()}, near
-
-
-def inverse_test(recs, pal):
-    """Fraction of inverse-coded cells whose colours survive COMA/COMB.
-
-    A cell survives when the COLOUR the glyph renders after complementing is
-    the colour the art wants there. Compared as colours, not slot indices: a
-    palette may hold the same colour in more than one slot (the art demands
-    19.3% of its complement weight as self-pairs), and an index comparison
-    would spuriously fail whenever the right colour sits at a different slot.
-    """
-    gi, near = assign_glyph_indices(recs, pal)
-    tot = ok = ok_ink = ok_paper = 0
-    fails = collections.Counter()
-    for r in recs:
-        if not r['inverse']:
-            continue
-        I, P = gi[r['glyph']]
-        rendered_i, rendered_p = pal[15 - I], pal[15 - P]
-        want_i, want_p = pal[near[r['ink']]], pal[near[r['paper']]]
-        tot += 1
-        i_ok, p_ok = (rendered_i == want_i), (rendered_p == want_p)
-        ok_ink += i_ok
-        ok_paper += p_ok
-        if i_ok and p_ok:
-            ok += 1
-        else:
-            fails[r['tile']] += 1
-    return dict(total=tot, both=ok, ink=ok_ink, paper=ok_paper,
-                fails_by_tile=fails)
-
-
-# ------------------------------------------------------------- the variants --
-def colour_weights(recs):
-    w = collections.Counter()
-    for r in recs:
-        w[r['ink']] += 1
-        w[r['paper']] += 1
-    return w
-
-
-def variant_error_first(recs, weights):
-    """Best 16 by weighted error; pairing chosen optimally afterwards."""
-    sel = choose16(weights)
-    dem, _, _ = complement_demand(recs)
-    pairw = {}
-    for p, w in dem.items():
-        a = sorted(p)
-        x, y = (a[0], a[0]) if len(a) == 1 else (a[0], a[1])
-        if x in sel and y in sel and x != y:
-            pairw[frozenset((x, y))] = w
-    _, pairs = best_matching(sel, pairw)
-    return build_palette(pairs)
-
-
-def variant_demand_first(recs, weights, dem):
-    """The 8 heaviest demanded pairs, taken literally."""
-    pairs = []
-    for p, _ in dem.most_common():
-        a = sorted(p)
-        pairs.append((a[0], a[0]) if len(a) == 1 else (a[0], a[1]))
-        if len(pairs) == 8:
-            break
-    return build_palette(pairs)
-
-
-def variant_balanced(recs, weights, dem, lam=180.0):
-    """Greedy over pairs, scoring demand satisfied AND coverage gained.
-
-    lam converts colour-coverage improvement (in weighted RGB error) into the
-    same units as demand weight. Chosen so neither term dominates; the frontier
-    either side of it is reported rather than hidden.
-    """
-    cands = set()
-    for p in dem:
-        a = sorted(p)
-        cands.add((a[0], a[0]) if len(a) == 1 else (a[0], a[1]))
-    for c in list(weights)[:24]:
-        for d in list(weights)[:24]:
-            cands.add((min(c, d), max(c, d)))
-
-    chosen, cols = [], []
-    for _ in range(8):
-        base_err = weighted_mean_error(cols, weights) if cols else None
-        best, bs = None, None
-        for pr in cands:
-            if pr in chosen:
-                continue
-            new = cols + [pr[0], pr[1]]
-            err = weighted_mean_error(new, weights)
-            gain = (base_err - err) if base_err is not None else (255.0 - err)
-            d = dem.get(frozenset(pr), 0.0)
-            s = d + lam * gain
-            if bs is None or s > bs:
-                best, bs = pr, s
-        chosen.append(best)
-        cols += [best[0], best[1]]
-    return build_palette(chosen)
-
-
-def survival(pal, recs):
-    """Cells rendering the colour the art wants, split by render mode.
-
-    NORMAL cells face no complement constraint, so their rate is the ceiling
-    imposed by one-glyph-one-colour (§2M invariant 1) alone. The INVERSE rate
-    sits under it, and the ratio between them isolates what the slot ORDER
-    costs — which the raw inverse fraction cannot, because that fraction is
-    trivially maximised by a coarse palette (a 1-colour palette scores 100%).
-    """
-    gi, near = assign_glyph_indices(recs, pal)
-    out = {'normal': [0, 0], 'inverse': [0, 0]}
-    for r in recs:
-        I, P = gi[r['glyph']]
-        if r['inverse']:
-            ri, rp = pal[15 - I], pal[15 - P]
-        else:
-            ri, rp = pal[I], pal[P]
-        wi, wp = pal[near[r['ink']]], pal[near[r['paper']]]
-        k = 'inverse' if r['inverse'] else 'normal'
-        out[k][1] += 1
-        if ri == wi and rp == wp:
-            out[k][0] += 1
-    return out
-
-
-def frontier_search(recs, weights, dem, err_cap, base=None, rounds=3):
-    """Maximise satisfied complement demand subject to weighted error <= cap.
-
-    Colour choice and slot order are not separable — optimising them in turn
-    gives a good set in a bad arrangement — so this searches colours while
-    re-solving the pairing exactly (DP matching) at every step.
-    """
-    sel = list(base) if base else choose16(weights)
-
-    def pair_and_score(cols):
-        pw = {}
-        for p, w in dem.items():
-            a = sorted(p)
-            if len(a) == 1:
-                continue
-            if a[0] in cols and a[1] in cols:
-                pw[frozenset((a[0], a[1]))] = w
-        sc, pairs = best_matching(list(cols), pw)
-        return sc, pairs
-
-    best_cols = list(sel)
-    best_sc, best_pairs = pair_and_score(best_cols)
-    for _ in range(rounds):
-        improved = False
-        for i in range(16):
-            for c in range(64):
-                if c in best_cols:
-                    continue
-                trial = list(best_cols)
-                trial[i] = c
-                if weighted_mean_error(trial, weights) > err_cap:
-                    continue
-                sc, pairs = pair_and_score(trial)
-                if sc > best_sc + 1e-9:
-                    best_cols, best_sc, best_pairs = trial, sc, pairs
-                    improved = True
-        if not improved:
-            break
-    return build_palette(best_pairs)
-
-
-def render_comparison(sheet, pal, out_path, scale=2):
-    """Original sheet beside itself quantised to the proposed 16, plus swatches.
-
-    Mechanical. Whether it looks right is Jay's call, not this tool's (§3).
-    """
-    img = np.asarray(Image.open(sheet).convert('RGB')).astype(float)
+def quantise_sheet(path):
+    """Whole sheet -> GIME index per pixel, in one vectorised pass."""
+    img = np.asarray(Image.open(path).convert('RGB')).astype(float)
     h, w, _ = img.shape
-    pal_rgb = np.array([GAMUT[c] for c in pal])
     flat = img.reshape(-1, 3)
-    d = ((flat[:, None, :] - pal_rgb[None, :, :]) ** 2).sum(axis=2)
-    quant = pal_rgb[np.argmin(d, axis=1)].reshape(h, w, 3)
-
-    gap, strip = 8, 24
-    canvas = np.zeros((h + gap + strip, w * 2 + gap, 3), dtype=np.uint8)
-    canvas[:, :] = 32
-    canvas[:h, :w] = img.astype(np.uint8)
-    canvas[:h, w + gap:] = quant.astype(np.uint8)
-    for s in range(16):                                   # slot order, left to right
-        x0 = s * (w * 2 + gap) // 16
-        x1 = (s + 1) * (w * 2 + gap) // 16
-        canvas[h + gap:, x0:x1] = GAMUT[pal[s]].astype(np.uint8)
-
-    out = Image.fromarray(canvas)
-    out = out.resize((out.width * scale, out.height * scale), Image.NEAREST)
-    out.save(out_path)
-    return out_path
+    d = ((flat[:, None, :] - GAMUT[None, :, :]) ** 2).sum(axis=2)
+    return np.argmin(d, axis=1).reshape(h, w).astype(np.uint8)
 
 
-def evaluate(pal, recs, weights, dem):
-    ok, tot = satisfied_weight(pal, dem)
-    inv = inverse_test(recs, pal)
-    return dict(
-        palette=[int(c) for c in pal],
-        distinct=len(set(pal)),
-        weighted_mean_error=round(weighted_mean_error(pal, weights), 3),
-        demand_satisfied=round(100.0 * ok / tot, 1),
-        inverse_cells=inv['total'],
-        inverse_both=inv['both'],
-        inverse_both_pct=round(100.0 * inv['both'] / inv['total'], 1),
-        inverse_ink_pct=round(100.0 * inv['ink'] / inv['total'], 1),
-        inverse_paper_pct=round(100.0 * inv['paper'] / inv['total'], 1),
-        fails_by_tile=inv['fails_by_tile'])
-
-
-# ---------------------------------------------------------------- pipeline --
+# --------------------------------------------------------------- sampling ---
 def load_rows():
     with open('assets/tile-correspondence.json', encoding='utf-8') as f:
         rows = json.load(f)['rows']
     return [r for r in rows if r['live'] and r['informative']]
 
 
-def derive(recs, weights, dem, j=1):
-    """j slot-pairs spent on the heaviest demanded complements, the rest on
-    coverage. j=1 is the knee of the frontier — see docs/project/palette.md."""
-    pairs = []
-    for p, _ in dem.most_common(j):
-        a = sorted(p)
-        pairs.append((a[0], a[0]) if len(a) == 1 else (a[0], a[1]))
-    used = [c for pr in pairs for c in pr]
-    fill, pool = [], [c for c, _ in weights.most_common()]
-    for _ in range((8 - j) * 2):
-        best, bv = None, None
-        for c in pool:
-            if c in used + fill:
+def sample(sheet, rows, tiles):
+    """One record per sampled cell, carrying all 64 demanded GIME colours.
+
+    Identity correspondence (C1): tile n -> art tile n, origin (0,0), pitch 24.
+    """
+    q = quantise_sheet(sheet)
+    out = []
+    for r in rows:
+        t = r['tile']
+        ty, tx = divmod(t, 16)
+        tile = q[ty * 24:ty * 24 + 24, tx * 24:tx * 24 + 24]
+        for k in range(9):
+            code = tiles[t][k]
+            if code is None or (code & 0x7F) in CORRUPT:
                 continue
-            v = weighted_mean_error(used + fill + [c], weights)
+            cy, cx = divmod(k, 3)
+            out.append(dict(tile=t, cell=k, glyph=code & 0x7F,
+                            inverse=bool(code & 0x80),
+                            want=tile[cy * 8:cy * 8 + 8,
+                                      cx * 8:cx * 8 + 8].reshape(NPIX).copy()))
+    return out
+
+
+def build_histograms(recs):
+    """Per (glyph, pixel), how many normal / inverse cells demand each colour.
+
+    Returns hN, hI of shape (n_glyphs, 64 pixels, 64 colours) and the glyph list.
+    Everything downstream is a contraction of these two arrays, which is what
+    makes a full 64-pixel model cheap enough to optimise over.
+    """
+    glyphs = sorted({r['glyph'] for r in recs})
+    gidx = {g: i for i, g in enumerate(glyphs)}
+    hN = np.zeros((len(glyphs), NPIX, 64))
+    hI = np.zeros((len(glyphs), NPIX, 64))
+    for r in recs:
+        h = hI if r['inverse'] else hN
+        gi = gidx[r['glyph']]
+        h[gi, np.arange(NPIX), r['want']] += 1
+    return hN, hI, glyphs, gidx
+
+
+def cost_tables(hN, hI):
+    """costN[g,p,a] = squared error if the NORMAL-rendered colour is a.
+       costI[g,p,b] = squared error if the INVERSE-rendered colour is b."""
+    return hN @ D2, hI @ D2
+
+
+# ----------------------------------------------------------- optimisation ---
+def pair_option_cost(costN, costI, a, b):
+    """Best of the two orientations of pair {a,b}, per (glyph, pixel)."""
+    return np.minimum(costN[..., a] + costI[..., b],
+                      costN[..., b] + costI[..., a])
+
+
+def optimise_pairs(costN, costI, candidates, npairs=8, rounds=6):
+    """Greedy seed then local search over 8 unordered colour pairs."""
+    best = np.full(costN.shape[:2], np.inf)
+    chosen = []
+    for _ in range(npairs):
+        bp, bv = None, None
+        for (a, b) in candidates:
+            v = float(np.minimum(best, pair_option_cost(costN, costI, a, b)).sum())
             if bv is None or v < bv:
-                best, bv = c, v
-        fill.append(best)
-    pairs += [(fill[2 * i], fill[2 * i + 1]) for i in range(8 - j)]
-    return build_palette(pairs)
+                bp, bv = (a, b), v
+        chosen.append(bp)
+        best = np.minimum(best, pair_option_cost(costN, costI, *bp))
+
+    for _ in range(rounds):
+        improved = False
+        for i in range(npairs):
+            others = [p for j, p in enumerate(chosen) if j != i]
+            base = np.full(costN.shape[:2], np.inf)
+            for (a, b) in others:
+                base = np.minimum(base, pair_option_cost(costN, costI, a, b))
+            cur = float(np.minimum(
+                base, pair_option_cost(costN, costI, *chosen[i])).sum())
+            for (a, b) in candidates:
+                if (a, b) in others:
+                    continue
+                v = float(np.minimum(
+                    base, pair_option_cost(costN, costI, a, b)).sum())
+                if v < cur - 1e-6:
+                    chosen[i], cur, improved = (a, b), v, True
+        if not improved:
+            break
+    return chosen
+
+
+def build_palette(pairs):
+    pal = [None] * 16
+    for slot, (a, b) in enumerate(pairs):
+        pal[slot] = int(a)
+        pal[15 - slot] = int(b)
+    return pal
+
+
+def choose16_floor(colour_counts, rounds=8):
+    """The 16 colours minimising per-pixel quantisation error of the ART.
+
+    §2M invariant 3: the palette is screen-wide, so colour use is computed
+    across the whole sheet weighted by how often it is drawn. This decides
+    WHICH 16 colours, and deliberately ignores the glyph model.
+
+    It has to be decided this way. Optimising the palette jointly against
+    one-pattern-per-glyph collapses it to 9 distinct colours: when a single
+    pattern must serve many cells demanding different colours, extra palette
+    entries buy almost nothing, so the optimiser spends slots on duplicates of
+    the compromise colours. That is a correct answer to the wrong question —
+    C3 will split glyphs, and a palette fitted to the unsplit case would be
+    baked-in wrong. See --objective joint to reproduce the collapse.
+    """
+    w = np.zeros(64)
+    for c, n in colour_counts.items():
+        w[c] = n
+    sel = []
+    for _ in range(16):
+        best, bv = None, None
+        for c in range(64):
+            if c in sel:
+                continue
+            cost = float((w * D2[sel + [c]].min(axis=0)).sum())
+            if bv is None or cost < bv:
+                best, bv = c, cost
+        sel.append(best)
+    for _ in range(rounds):
+        improved = False
+        cur = float((w * D2[sel].min(axis=0)).sum())
+        for i in range(16):
+            for c in range(64):
+                if c in sel:
+                    continue
+                trial = list(sel)
+                trial[i] = c
+                v = float((w * D2[trial].min(axis=0)).sum())
+                if v < cur - 1e-6:
+                    sel, cur, improved = trial, v, True
+        if not improved:
+            break
+    return sorted(sel)
+
+
+def pair_chosen16(sel, costN, costI, rounds=200):
+    """Pair 16 FIXED colours to minimise the complement cost.
+
+    Exhaustive perfect matching over 16 nodes is 2,027,025 pairings, so this
+    is a repeated best-improvement search over pair swaps from several starts —
+    the objective here is flat enough that it converges immediately.
+    """
+    import itertools
+
+    def total(pairs):
+        best = np.full(costN.shape[:2], np.inf)
+        for (a, b) in pairs:
+            best = np.minimum(best, pair_option_cost(costN, costI, a, b))
+        return float(best.sum())
+
+    rng = list(range(16))
+    best_pairs = [(sel[i], sel[15 - i]) for i in range(8)]
+    best_val = total(best_pairs)
+    for _ in range(rounds):
+        improved = False
+        for i, j in itertools.combinations(range(8), 2):
+            for swap in ((0, 0), (0, 1), (1, 0), (1, 1)):
+                trial = [list(p) for p in best_pairs]
+                trial[i][swap[0]], trial[j][swap[1]] = \
+                    trial[j][swap[1]], trial[i][swap[0]]
+                trial = [tuple(p) for p in trial]
+                v = total(trial)
+                if v < best_val - 1e-6:
+                    best_pairs, best_val, improved = trial, v, True
+        if not improved:
+            break
+    return best_pairs
+
+
+def candidate_pairs(recs, top=34):
+    """Pairs drawn from the colours the art actually demands, plus self-pairs.
+
+    A self-pair {c,c} places one colour at both i and 15-i, which is what a
+    pixel needs when the art wants the SAME colour in normal and inverted
+    instances of its glyph.
+    """
+    cnt = collections.Counter()
+    for r in recs:
+        cnt.update(r['want'].tolist())
+    cols = [c for c, _ in cnt.most_common(top)]
+    out = {(c, c) for c in cols}
+    for i, a in enumerate(cols):
+        for b in cols[i + 1:]:
+            out.add((min(a, b), max(a, b)))
+    return sorted(out), cnt
+
+
+# ------------------------------------------------------------ measurement ---
+def decompose(pal, costN, costI, hN, hI):
+    """Mean per-pixel RGB distance under each successive constraint."""
+    npx = float(hN.sum() + hI.sum())
+    pal_a = np.array(pal)
+
+    # floor: every cell free to pick its own best palette entry per pixel
+    best_col = D2[:, :][pal_a].min(axis=0)                  # (64,) over demand colour
+    floor = float((hN * best_col).sum() + (hI * best_col).sum())
+
+    # sharing: one pattern per glyph, but inverse allowed a separate pattern
+    shareN = costN[..., pal_a].min(axis=2).sum()
+    shareI = costI[..., pal_a].min(axis=2).sum()
+    sharing = float(shareN + shareI)
+
+    # actual: one pattern, inverse forced through 15-i
+    opts = np.stack([costN[..., pal[i]] + costI[..., pal[15 - i]]
+                     for i in range(16)], axis=-1)
+    actual = float(opts.min(axis=2).sum())
+
+    rms = lambda s: float(np.sqrt(s / npx))
+    return dict(pixels=int(npx),
+                floor=round(rms(floor), 2),
+                sharing=round(rms(sharing), 2),
+                actual=round(rms(actual), 2),
+                cost_of_sharing=round(rms(sharing) - rms(floor), 2),
+                cost_of_complement=round(rms(actual) - rms(sharing), 2))
+
+
+def glyph_patterns(pal, costN, costI):
+    """The index each glyph assigns to each of its 64 pixels."""
+    opts = np.stack([costN[..., pal[i]] + costI[..., pal[15 - i]]
+                     for i in range(16)], axis=-1)
+    return opts.argmin(axis=2)                              # (n_glyphs, 64)
+
+
+def kmeans_cells(want, inv, k, iters=25):
+    """Group a glyph's cells into k clusters by their demanded colour vectors.
+
+    Distance is RGB over all 64 pixels. Normal and inverse cells are separated
+    first: they render through different transforms, so a cluster mixing them
+    is being asked to satisfy a colour and its complement at once.
+    Deterministic seeding (farthest-point) — no RNG, so the analysis is
+    reproducible.
+    """
+    n = len(want)
+    if k >= n:
+        return [[i] for i in range(n)]
+
+    pts = GAMUT[want]                                   # (n, 64, 3)
+    if k == 1:
+        return [list(range(n))]                         # one pattern, no split
+
+    groups = [m for m in (np.where(~inv)[0], np.where(inv)[0]) if len(m)]
+    if len(groups) == 2:
+        share = int(round(k * len(groups[0]) / float(n)))
+        share = min(max(share, 1), k - 1)               # at least 1 each
+        alloc = [share, k - share]
+    else:
+        alloc = [k]
+
+    out = []
+    for mask, kk in zip(groups, alloc):
+        sub = pts[mask]
+        if kk >= len(mask):
+            out += [[int(i)] for i in mask]
+            continue
+        cen = [sub[0]]
+        for _ in range(kk - 1):
+            d = np.min(np.stack([((sub - c) ** 2).sum(axis=(1, 2))
+                                 for c in cen]), axis=0)
+            cen.append(sub[int(np.argmax(d))])
+        cen = np.stack(cen)
+        assign = None
+        for _ in range(iters):
+            d = np.stack([((sub - c) ** 2).sum(axis=(1, 2)) for c in cen])
+            new = d.argmin(axis=0)
+            if assign is not None and (new == assign).all():
+                break
+            assign = new
+            for j in range(kk):
+                sel = sub[assign == j]
+                if len(sel):
+                    cen[j] = sel.mean(axis=0)
+        for j in range(kk):
+            out.append([int(i) for i in mask[assign == j]])
+    return [g for g in out if g]
+
+
+def variant_analysis(recs, pal, gidx, kmax=6):
+    """Error if a glyph may split into K variants, against the 128-slot budget.
+
+    Cells of a glyph are clustered by their demanded colour vectors; each
+    cluster gets its own pattern. Shows how much of the sharing cost is
+    recoverable and how many glyph slots that costs.
+    """
+    pal_a = np.array(pal)
+    bycell = collections.defaultdict(list)
+    for r in recs:
+        bycell[r['glyph']].append(r)
+
+    expect_px = float(sum(NPIX for _ in recs))
+    out = []
+    for K in range(1, kmax + 1):
+        tot = npx = 0.0
+        slots = 0
+        for g, cells in bycell.items():
+            want = np.stack([c['want'] for c in cells])
+            inv = np.array([c['inverse'] for c in cells])
+            k = min(K, len(cells))
+            slots += k
+            # k-means over the cells' demanded colour vectors, in RGB space.
+            # (A lexicographic split of the 64-dim demand vectors was tried
+            # first and is near-worthless — it groups by the top-left pixel.)
+            for blk in kmeans_cells(want, inv, k):
+                if len(blk) == 0:
+                    continue
+                hN = np.zeros((NPIX, 64))
+                hI = np.zeros((NPIX, 64))
+                for r_i in blk:
+                    h = hI if inv[r_i] else hN
+                    h[np.arange(NPIX), want[r_i]] += 1
+                cN, cI = hN @ D2, hI @ D2
+                opts = np.stack([cN[:, pal[i]] + cI[:, pal[15 - i]]
+                                 for i in range(16)], axis=-1)
+                tot += float(opts.min(axis=1).sum())
+                npx += float(hN.sum() + hI.sum())
+        # every sampled pixel must be accounted for at every K, or the rms is
+        # computed over a subset and is not comparable across rows
+        assert abs(npx - expect_px) < 1e-6, (
+            'K=%d accounted %d pixels, expected %d' % (K, npx, expect_px))
+        out.append(dict(variants=K, glyph_slots=slots,
+                        rms=round(float(np.sqrt(tot / npx)), 2)))
+    return out
+
+
+# ----------------------------------------------------------------- render ---
+def render_engine(sheet, pal, recs, patterns, gidx, out_path, scale=2):
+    """Left: the sheet. Right: what the ENGINE would draw under this palette.
+
+    The right panel is built from the glyph patterns actually solved for, with
+    inverse cells rendered through 15-i — so it is what the tileset would put on
+    screen, not a per-pixel quantisation of the art. Mechanical; whether it looks
+    right is Jay's call (§3).
+    """
+    img = np.asarray(Image.open(sheet).convert('RGB'))
+    h, w, _ = img.shape
+    out = np.zeros_like(img)
+    pal_rgb = np.array([GAMUT[c] for c in pal], dtype=np.uint8)
+
+    for r in recs:
+        idx = patterns[gidx[r['glyph']]].copy()
+        if r['inverse']:
+            idx = 15 - idx
+        block = pal_rgb[idx].reshape(8, 8, 3)
+        ty, tx = divmod(r['tile'], 16)
+        cy, cx = divmod(r['cell'], 3)
+        y = ty * 24 + cy * 8
+        x = tx * 24 + cx * 8
+        out[y:y + 8, x:x + 8] = block
+
+    gap, strip = 8, 24
+    canvas = np.zeros((h + gap + strip, w * 2 + gap, 3), dtype=np.uint8)
+    canvas[:, :] = 32
+    canvas[:h, :w] = img
+    canvas[:h, w + gap:] = out
+    for s in range(16):
+        x0 = s * (w * 2 + gap) // 16
+        x1 = (s + 1) * (w * 2 + gap) // 16
+        canvas[h + gap:, x0:x1] = GAMUT[pal[s]].astype(np.uint8)
+
+    im = Image.fromarray(canvas)
+    im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+    im.save(out_path)
+    return out_path
+
+
+# ------------------------------------------------------------------- main ---
+def run(sheet, objective='floor'):
+    rows = load_rows()
+    tiles = tilecorr.load_tiles()
+    recs = sample(sheet, rows, tiles)
+    hN, hI, glyphs, gidx = build_histograms(recs)
+    costN, costI = cost_tables(hN, hI)
+    cnt = collections.Counter()
+    for r in recs:
+        cnt.update(r['want'].tolist())
+
+    if objective == 'joint':
+        cands, _ = candidate_pairs(recs)
+        pairs = optimise_pairs(costN, costI, cands)
+    else:
+        sel = choose16_floor(cnt)
+        pairs = pair_chosen16(sel, costN, costI)
+    pal = build_palette(pairs)
+    return dict(recs=recs, hN=hN, hI=hI, costN=costN, costI=costI,
+                glyphs=glyphs, gidx=gidx, pal=pal, pairs=pairs,
+                colour_counts=cnt, tiles=tiles)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sheet', default='art/Amiga_Artwork.png')
-    ap.add_argument('--j', type=int, default=1)
     ap.add_argument('--json')
     ap.add_argument('--render')
-    ap.add_argument('--frontier', action='store_true')
+    ap.add_argument('--control')
+    ap.add_argument('--objective', default='floor', choices=['floor','joint'])
     args = ap.parse_args()
 
-    rows = load_rows()
-    tiles = tilecorr.load_tiles()
-    glyphs = tilecorr.load_font()
-    ink = {g: (glyphs[g] == 1) for g in range(128)}
+    st = run(args.sheet, args.objective)
+    pal, recs = st['pal'], st['recs']
+    dec = decompose(pal, st['costN'], st['costI'], st['hN'], st['hI'])
+    pats = glyph_patterns(pal, st['costN'], st['costI'])
 
-    recs = sample(args.sheet, rows, tiles, ink)
-    weights = colour_weights(recs)
-    dem, stats, byg = complement_demand(recs)
-
-    if args.frontier:
-        for j in range(9):
-            pal = derive(recs, weights, dem, j)
-            r = evaluate(pal, recs, weights, dem)
-            s = survival(pal, recs)
-            n = 100.0 * s['normal'][0] / s['normal'][1]
-            i = 100.0 * s['inverse'][0] / s['inverse'][1]
-            print('j=%d demand %.1f%% err %.2f distinct %d normal %.1f%% '
-                  'inverse %.1f%% eff %.1f%%'
-                  % (j, r['demand_satisfied'], r['weighted_mean_error'],
-                     r['distinct'], n, i, 100 * i / n))
-        return 0
-
-    pal = derive(recs, weights, dem, args.j)
-    r = evaluate(pal, recs, weights, dem)
-    s = survival(pal, recs)
-    print('%s  j=%d' % (args.sheet, args.j))
+    print('%s' % args.sheet)
     print('  palette ' + ' '.join('$%02X' % c for c in pal))
-    print('  distinct %d  weighted mean error %.3f  demand satisfied %.1f%%'
-          % (r['distinct'], r['weighted_mean_error'], r['demand_satisfied']))
-    print('  normal %d/%d (%.1f%%)   inverse %d/%d (%.1f%%)'
-          % (s['normal'][0], s['normal'][1],
-             100.0 * s['normal'][0] / s['normal'][1],
-             s['inverse'][0], s['inverse'][1],
-             100.0 * s['inverse'][0] / s['inverse'][1]))
+    print('  distinct %d   cells %d   pixels %d'
+          % (len(set(pal)), len(recs), dec['pixels']))
+    print('  mean per-pixel RGB error:')
+    print('    floor (palette only)            %6.2f' % dec['floor'])
+    print('    + one pattern per glyph         %6.2f   (+%.2f)'
+          % (dec['sharing'], dec['cost_of_sharing']))
+    print('    + inverse through 15-i          %6.2f   (+%.2f)'
+          % (dec['actual'], dec['cost_of_complement']))
+
+    var = variant_analysis(recs, pal, st['gidx'])
+    print('  glyph variants (budget 128 slots):')
+    for v in var:
+        print('    %d variant(s): %3d slots, rms %6.2f%s'
+              % (v['variants'], v['glyph_slots'], v['rms'],
+                 '' if v['glyph_slots'] <= 128 else '   EXCEEDS BUDGET'))
+
+    if args.control:
+        cst = run(args.control, args.objective)
+        cdec = decompose(cst['pal'], st['costN'], st['costI'], st['hN'], st['hI'])
+        own = decompose(cst['pal'], cst['costN'], cst['costI'],
+                        cst['hN'], cst['hI'])
+        mine_on_ctrl = decompose(pal, cst['costN'], cst['costI'],
+                                 cst['hN'], cst['hI'])
+        print('  CONTROL %s' % args.control)
+        print('    palette ' + ' '.join('$%02X' % c for c in cst['pal']))
+        print('    control-derived on THIS sheet   %6.2f  (mine %.2f)'
+              % (cdec['actual'], dec['actual']))
+        print('    control-derived on its own      %6.2f  (mine %.2f)'
+              % (own['actual'], mine_on_ctrl['actual']))
 
     if args.render:
-        print('  render -> %s' % render_comparison(args.sheet, pal, args.render))
+        print('  render -> %s'
+              % render_engine(args.sheet, pal, recs, pats, st['gidx'],
+                              args.render))
 
     if args.json:
-        pairs = [{'slots': [i, 15 - i],
-                  'colours': ['$%02X' % pal[i], '$%02X' % pal[15 - i]],
-                  'self_paired': pal[i] == pal[15 - i],
-                  'demand_weight': round(
-                      dem.get(frozenset((pal[i], pal[15 - i])), 0.0), 1)}
-                 for i in range(8)]
-        slots = []
-        for i, c in enumerate(pal):
-            rgb = GAMUT[c].astype(int).tolist()
-            slots.append({'slot': i, 'value': '$%02X' % c, 'byte': int(c),
-                          'rgb': rgb, 'complement_slot': 15 - i,
-                          'complement_value': '$%02X' % pal[15 - i],
-                          'demand_weight': int(weights.get(c, 0))})
-        fails = sorted(r['fails_by_tile'].items(), key=lambda kv: -kv[1])
         doc = {
             'source_sheet': args.sheet,
-            'derived': '2026-08-01, dispatch C2',
+            'derived': '2026-08-01, dispatch C2 (re-derived under the 16-colour glyph model)',
             'applied': False,
             'note': 'Proposal only. C3 applies this; graphics.asm is untouched.',
-            'slots': slots,
-            'complement_pairs': pairs,
-            'metrics': {
-                'weighted_mean_error': r['weighted_mean_error'],
-                'distinct_colours': r['distinct'],
-                'complement_demand_satisfied_pct': r['demand_satisfied'],
-                'cells_sampled': len(recs),
-                'normal_cells': s['normal'][1],
-                'normal_survival_pct': round(
-                    100.0 * s['normal'][0] / s['normal'][1], 1),
-                'inverse_cells': s['inverse'][1],
-                'inverse_survival_pct': round(
-                    100.0 * s['inverse'][0] / s['inverse'][1], 1),
-                'ordering_efficiency_pct': round(
-                    100.0 * (s['inverse'][0] / s['inverse'][1])
-                    / (s['normal'][0] / s['normal'][1]), 1)},
-            'inverse_failures_by_tile': [
-                {'tile': t, 'cells': n} for t, n in fails],
+            'engine_model': ('every glyph pixel is an independent 4-bit palette '
+                             'index; NextRowInv complements each one (i -> 15-i)'),
+            'slots': [{'slot': i, 'value': '$%02X' % pal[i], 'byte': int(pal[i]),
+                       'rgb': GAMUT[pal[i]].astype(int).tolist(),
+                       'complement_slot': 15 - i,
+                       'complement_value': '$%02X' % pal[15 - i],
+                       'demand_pixels': int(st['colour_counts'].get(pal[i], 0))}
+                      for i in range(16)],
+            'complement_pairs': [{'slots': [i, 15 - i],
+                                  'colours': ['$%02X' % pal[i],
+                                              '$%02X' % pal[15 - i]],
+                                  'self_paired': pal[i] == pal[15 - i]}
+                                 for i in range(8)],
+            'error_decomposition': dec,
+            'glyph_variants': var,
+            'cells_sampled': len(recs),
         }
         with open(args.json, 'w', encoding='utf-8', newline='\n') as f:
             json.dump(doc, f, indent=1)
