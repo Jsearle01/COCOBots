@@ -1,0 +1,5 @@
+# Byte fidelity is a project invariant (CLAUDE.md §10, §2I).
+# Sources are CRLF, and BACKGROUND_TASKS_6809.ASM contains 12 BARE CRs that lwasm
+# treats as line terminators. Any normalisation silently breaks verified content
+# with nothing visible in a diff. Treat everything as binary for EOL purposes.
+* -text
