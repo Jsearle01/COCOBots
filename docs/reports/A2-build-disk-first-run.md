@@ -1,54 +1,59 @@
-# Form B Report — A2 — reproducible build, disk image, first MAME visual gate
+﻿# Form B Report â€” A2 â€” reproducible build, disk image, first MAME visual gate
 
-**Class:** build. `wip`, pushed before reporting. No prod binary changed — this dispatch *created*
+**Class:** build. `wip`, pushed before reporting. No prod binary changed â€” this dispatch *created*
 the first reproducible one. **No source file was modified.**
 
 ```
-25.3: PENDING JAY — live-disk, RGB
+25.3: PENDING JAY â€” live-disk, RGB
 ```
 
-### 0 — Receipt / status (C-35 stamp)
+### 0 â€” Receipt / status (C-35 stamp)
 
 t0 = 2026-08-01, dispatch A2 received. HEAD at receipt `28eaba5` (`wip`), tree clean.
 HEAD at report `1c99f20` (`wip`), tree clean.
 
-### 1 — Summary
+### 1 â€” Summary
 
 All three parts delivered. The build reproduces the pre-verified binary **byte-for-byte from a
 clean checkout**, the disk image builds and its file reads back byte-identical, and the port runs
-**on the live-disk path — not poke.**
+**on the live-disk path â€” not poke.**
 
 Measured, first ever execution of this port:
 
 - `LOADM` completes and DECB returns `OK`; all eleven segments verified present in guest RAM
-- `EXEC` transfers control — PC leaves ROM into the game's code region
+- `EXEC` transfers control â€” PC leaves ROM into the game's code region
 - the port sets its own video mode, `$FF98 <- $80` / `$FF99 <- $3E`, exactly as documented, and
   writes its own 16-entry palette
 - the VSYNC keyboard scanner responds; the menu navigates
 - selecting **START GAME** leaves the menu loop and runs the main loop
 
-Eight MAME screenshots and six framebuffer-decoded PNGs captured for Jay. **25.3 is not
-self-certified and is not claimed.**
+**The gate path is `./run.sh` (or `run.bat`)** â€” a live, interactive MAME run with the FDC attached,
+Monitor Type set to RGB, and a scratch copy of the disk mounted. `--auto` types `LOADM"ROBOTSA"` and
+`EXEC` and then goes inert, leaving the keyboard to Jay.
+
+Eight MAME screenshots and six framebuffer-decoded PNGs were also captured. **They are supporting
+evidence, not the gate** â€” CLAUDE.md Â§4 classes a still as `static-png`, which verifies endpoints
+only and cannot show motion. **25.3 is not self-certified and is not claimed.**
 
 The dispatch's central prediction held: **the `$034D` line-buffer collision is latent, not active.**
-Measured directly — after typing `EXEC`, the sprite table at `$034D` was byte-intact.
+Measured directly â€” after typing `EXEC`, the sprite table at `$034D` was byte-intact.
 
 Four harness faults were found and corrected along the way, three of which had produced confident
-false readings about working code. They are in §6 and §7 and are the bulk of §10.
+false readings about working code. They are in Â§6 and Â§7 and are the bulk of Â§10.
 
-### 2 — Files modified
+### 2 â€” Files modified
 
 Created and tracked:
 
 | file | what |
 |---|---|
 | `build.sh` | build entry point (POSIX) |
-| `build.bat` | build entry point (Windows), **CRLF-pinned** per idioms §14g |
+| `build.bat` | build entry point (Windows), **CRLF-pinned** per idioms Â§14g |
 | `tools/decbmerge.py` | DECB segment parse / report / merge / compare / sha256 |
-| `tools/fb2png.py` | GIME framebuffer → native 1:1 PNG |
+| `tools/fb2png.py` | GIME framebuffer â†’ native 1:1 PNG |
 | `tools/a2c_liverun.lua` | MAME live-disk harness |
 
-Modified: `.gitignore` — added `/cfg/`, `/snap/`, `__pycache__/`. MAME writes `cfg/` and `snap/`
+Modified: `.gitignore` â€” added `/cfg/`, `/snap/`, `__pycache__/`. MAME writes `cfg/` and `snap/`
 into the working directory unless redirected, and they appeared as untracked noise.
 
 **No file under `src/`, `assets/` or `art/` was touched.** Verified: `git status` shows no
@@ -57,13 +62,13 @@ modification to any of them.
 Build products (all gitignored, none committed): `build/petrobots.bin`, `build/build.lst`,
 `build/ROBOTSA.BIN`, `build/robots.dsk`, `build/run_a2c.dsk`, `build/a2c/*`.
 
-### 3 — Reasoning
+### 3 â€” Reasoning
 
 **Merge approach.** A DECB file is segments (`$00 len addr data`) plus one end block
-(`$FF $0000 exec`). Merging is therefore concatenation of segments with a single new end block —
+(`$FF $0000 exec`). Merging is therefore concatenation of segments with a single new end block â€”
 no address arithmetic and nothing to get subtly wrong. `tools/decbmerge.py` also refuses to write
 a file whose segments overlap, and flags any segment landing in the four regions DECB uses during
-or just after a `LOADM` (idioms §23, §28, §14e). It correctly flags `$034D` as a hazard, which is
+or just after a `LOADM` (idioms Â§23, Â§28, Â§14e). It correctly flags `$034D` as a hazard, which is
 the known-and-documented latent one.
 
 **Why `-video none` was abandoned.** The first run used it for speed; MAME's snapshot then produces
@@ -71,16 +76,16 @@ nothing. Runs are ~700% speed windowed anyway, so the visual path stays enabled.
 
 **Why both a MAME snapshot and a framebuffer decode.** The MAME snapshot is the authentic render
 through the emulator's video path with Monitor Type = RGB. The framebuffer decode is native 1:1
-square pixels per idioms §11b and is independent of MAME's display path. They corroborate each
+square pixels per idioms Â§11b and is independent of MAME's display path. They corroborate each
 other and neither depends on the other being right.
 
-### 4 — Verification (AC-by-AC)
+### 4 â€” Verification (AC-by-AC)
 
-**AC1 — PASS.** Build runs from a clean checkout, one known warning, segment table matches,
+**AC1 â€” PASS.** Build runs from a clean checkout, one known warning, segment table matches,
 15,931 bytes.
 
 Verified by cloning `wip` to a fresh directory and running `./build.sh` there. Complete `lwasm`
-output, verbatim — this is the 25.1 evidence:
+output, verbatim â€” this is the 25.1 evidence:
 
 ```
 Warning (src/PETROBOTS_6809.asm:3146): Operand size larger than required
@@ -92,25 +97,25 @@ Segment table against the dispatch's expected values:
 
 | expected | measured | |
 |---|---|---|
-| `$034D` / 138 | `$034D`–`$03D6`, **138** | ✅ |
-| `$002E`–`$0080`, 51 total in 5 segments | `$002E`/2, `$0035`/9, `$0043`/34, `$007A`/3, `$007E`/3 = **51 in 5** | ✅ |
-| `$0E01` / 1,721 | `$0E01`–`$14B9`, **1,721** | ✅ |
-| `$14BB` / 9,875, ends `$3B4D` | `$14BB`–`$3B4D`, **9,875** | ✅ |
-| `$41F6` / 4,096, ends `$51F5` | `$41F6`–`$51F5`, **4,096** | ✅ |
-| exec `$0E01` | **`$0E01`** | ✅ |
+| `$034D` / 138 | `$034D`â€“`$03D6`, **138** | âœ… |
+| `$002E`â€“`$0080`, 51 total in 5 segments | `$002E`/2, `$0035`/9, `$0043`/34, `$007A`/3, `$007E`/3 = **51 in 5** | âœ… |
+| `$0E01` / 1,721 | `$0E01`â€“`$14B9`, **1,721** | âœ… |
+| `$14BB` / 9,875, ends `$3B4D` | `$14BB`â€“`$3B4D`, **9,875** | âœ… |
+| `$41F6` / 4,096, ends `$51F5` | `$41F6`â€“`$51F5`, **4,096** | âœ… |
+| exec `$0E01` | **`$0E01`** | âœ… |
 
-**AC2 — PASS.** `build/ROBOTSA.BIN` is byte-identical to `dist/ROBOTSA.BIN`.
+**AC2 â€” PASS.** `build/ROBOTSA.BIN` is byte-identical to `dist/ROBOTSA.BIN`.
 
 ```
 IDENTICAL: build/ROBOTSA.BIN == dist/ROBOTSA.BIN (27460 bytes)
 sha256  13b8b4c078174abba8f059ebd35a1e9fb0b892b83a42ce8dd5fb34134b8f6c9a   (both)
 ```
 
-**27,460 bytes**, span `$002E`–`$7EFF`, **overlaps: none**. Segment count is **11, not the 10 the
-dispatch states** — see §7 flag 1. The reference copy has 11 as well, and byte-identity is the
+**27,460 bytes**, span `$002E`â€“`$7EFF`, **overlaps: none**. Segment count is **11, not the 10 the
+dispatch states** â€” see Â§7 flag 1. The reference copy has 11 as well, and byte-identity is the
 real gate.
 
-**AC3 — PASS.** `build/` gitignored, scripts tracked:
+**AC3 â€” PASS.** `build/` gitignored, scripts tracked:
 
 ```
 IGNORED  build/ROBOTSA.BIN   <- .gitignore:12:/build/
@@ -121,7 +126,7 @@ tracked  build.bat
 tracked  tools/decbmerge.py
 ```
 
-**AC4 — PASS.** `.dsk` builds and lists the file at the expected size:
+**AC4 â€” PASS.** `.dsk` builds and lists the file at the expected size:
 
 ```
 Contents of build/robots.dsk:
@@ -129,12 +134,12 @@ ROBOTSA.BIN                       27460             2 B
        1 File(s)           27460 bytes            129024 bytes free
 ```
 
-Image is 161,280 bytes = 35 tracks × 18 sectors × 256 B. Going beyond "listed", the file was
-**read back off the disk and byte-compared** — `imgtool get` → `IDENTICAL … (27460 bytes)`, and its
+Image is 161,280 bytes = 35 tracks Ã— 18 sectors Ã— 256 B. Going beyond "listed", the file was
+**read back off the disk and byte-compared** â€” `imgtool get` â†’ `IDENTICAL â€¦ (27460 bytes)`, and its
 segment table re-parsed clean from the extracted copy. The dispatch asked for listed *and*
 readable; this is the readable half.
 
-**AC5 — PASS.** The program loads and executes.
+**AC5 â€” PASS.** The program loads and executes.
 
 | question | answer | evidence |
 |---|---|---|
@@ -142,18 +147,18 @@ readable; this is the readable half.
 | are all segments present? | **yes** | `$0E01`=`10 CE 01 FF`, `$41F6`=`00 01`, `$5200`=`AA AA`, `$5D00`=`01 03`, `$7EFF`=`D3` |
 | does `EXEC` transfer control? | **yes** | PC leaves ROM; sits in `ISLOOP` (`$1F75`), the intro menu key-wait |
 | does the screen change from DECB text mode? | **yes** | `$FF90<-$08`, `$FF98<-$80`, `$FF99<-$3E`, `$FF9D<-$F0`, plus all 16 palette registers |
-| does the keyboard respond? | **yes** | `MENUY` `$00`→`$01` on move-down, back to `$00` on move-up |
-| does the game start? | **yes** | after SPACE at menu 0, PC ranges across `$1321`–`$26E1` |
+| does the keyboard respond? | **yes** | `MENUY` `$00`â†’`$01` on move-down, back to `$00` on move-up |
+| does the game start? | **yes** | after SPACE at menu 0, PC ranges across `$1321`â€“`$26E1` |
 
-**AC6 — PASS.** 14 PNGs captured — 8 MAME snapshots + 6 framebuffer decodes. Paths and the exact
-invocation in §5.
+**AC6 â€” PASS.** 14 PNGs captured â€” 8 MAME snapshots + 6 framebuffer decodes. Paths and the exact
+invocation in Â§5.
 
-**AC7 — PASS.** Gate line is `25.3: PENDING JAY — live-disk, RGB`. Not self-certified. No claim is
+**AC7 â€” PASS.** Gate line is `25.3: PENDING JAY â€” live-disk, RGB`. Not self-certified. No claim is
 made anywhere in this report about what the screenshots depict.
 
-### 5 — Verdict-time evidence
+### 5 â€” Verdict-time evidence
 
-**25.1 — the complete `lwasm` invocation and output:**
+**25.1 â€” the complete `lwasm` invocation and output:**
 
 ```
 $ lwasm --format=decb --output=build/petrobots.bin --list=build/build.lst src/PETROBOTS_6809.asm
@@ -183,14 +188,14 @@ mame coco3 -rompath C:/mame/roms -ext fdc -flop1 build/run_a2c.dsk
      -nothrottle -sound none -seconds_to_run 130 -window -nomaximize -skip_gameinfo
 ```
 
-`-ext fdc` per idioms §14a. `build/run_a2c.dsk` is a **copy** of `build/robots.dsk` per idioms §24
-— MAME opens floppies read-write and the built artifact is never mounted. Monitor Type is set to
-**RGB** from Lua (`:screen_config`, `field.user_value = 1`) per idioms §11l, since it is a machine
+`-ext fdc` per idioms Â§14a. `build/run_a2c.dsk` is a **copy** of `build/robots.dsk` per idioms Â§24
+â€” MAME opens floppies read-write and the built artifact is never mounted. Monitor Type is set to
+**RGB** from Lua (`:screen_config`, `field.user_value = 1`) per idioms Â§11l, since it is a machine
 config and not a CLI flag, and MAME's default is Composite.
 
-`mame coco3 -verifyroms` reports `bad`. Per idioms §14a this is benign: every missing file is an
+`mame coco3 -verifyroms` reports `bad`. Per idioms Â§14a this is benign: every missing file is an
 *alternate* DOS ROM (`disk10`, `ados*`, `rgbdos_mess`, `hdbdw3bck`, `hdbdw3bc3`). `disk11.rom`,
-the one that matters, is present inside `coco3.zip` — confirmed by listing the archive.
+the one that matters, is present inside `coco3.zip` â€” confirmed by listing the archive.
 
 **Guest-side trace of the launch:**
 
@@ -211,7 +216,7 @@ EXEC keystrokes drained at frame 1636
 |EXEC|
 ```
 
-**GIME writes after `EXEC` — the video mode change (write tap; these registers cannot be read):**
+**GIME writes after `EXEC` â€” the video mode change (write tap; these registers cannot be read):**
 
 ```
 f=1626 $FF90 <- $08
@@ -221,14 +226,14 @@ f=1626 $FF9D <- $F0
 f=1626 $FF9E <- $00
 ```
 
-`$FF98/$FF99 = $80/$3E` is exactly what CLAUDE.md §2G specifies for this port. The port also wrote
+`$FF98/$FF99 = $80/$3E` is exactly what CLAUDE.md Â§2G specifies for this port. The port also wrote
 all sixteen palette registers at the same moment:
 
 ```
 $FFB0-$FFBF = $00 $3F $10 $09 $07 $38 $22 $0B $30 $26 $37 $12 $34 $20 $00 $3F
 ```
 
-**The `$034D` collision — measured, and latent as predicted (CLAUDE.md §2H):**
+**The `$034D` collision â€” measured, and latent as predicted (CLAUDE.md Â§2H):**
 
 ```
 line buffer $02DD..$02E4    = 00 00 00 43 00 4F 54 53
@@ -246,7 +251,7 @@ f=2059 key=$01      f=2062 key=$57 ('W', move up)    -> MENUY $01 -> $00
 f=2299 key=$20 (SPACE, select)                       -> START GAME
 ```
 
-**PC before and after selecting START GAME — the execution evidence:**
+**PC before and after selecting START GAME â€” the execution evidence:**
 
 ```
 watch +480   PC=$1F78  S=$01FD     <- ISLOOP, menu key-wait
@@ -262,14 +267,42 @@ watch +1800  PC=$13E4  S=$01FC
 
 Pinned in a two-instruction loop before, ranging across the whole code region after.
 
-**Stack behaviour**, bearing on dispatch §8's third suspect: S stayed within **`$01F5`–`$01FD`**
-across every sample — about 10 bytes deep, never approaching DECB's `$010C` IRQ vector. The
+**Stack behaviour**, bearing on dispatch Â§8's third suspect: S stayed within **`$01F5`â€“`$01FD`**
+across every sample â€” about 10 bytes deep, never approaching DECB's `$010C` IRQ vector. The
 `LDS #$01FF` suspect is not implicated on this evidence.
 
-**Screenshots — surfaced for Jay, not interpreted (CLAUDE.md §3).**
+**The live gate path â€” this is what 25.3 is taken against:**
 
-All under `build/a2c/`, which is **gitignored and therefore local-only** — they are not on the
-remote (§7 flag 4).
+```
+./run.sh --auto            # or: run.bat --auto
+```
+
+Sets `-ext fdc` (mandatory, idioms Â§14a), mounts a **copy** of the disk (idioms Â§24), and applies
+Monitor Type = RGB from `tools/mame-cfg/coco3.cfg` â€” a machine configuration, not a CLI flag, with
+MAME defaulting to Composite (idioms Â§11l, Â§18). Verified applied, **with a negative control**:
+
+```
+with    tools/mame-cfg/coco3.cfg : port=:screen_config Monitor Type user_value=1 default=0 -> RGB
+without it                       : port=:screen_config Monitor Type user_value=0 default=0 -> COMPOSITE
+```
+
+The control matters â€” a config that silently fails to apply is exactly the Â§18 failure that
+rendered the sibling port's colours wrong while every automated check stayed green.
+
+`--auto` verified end to end on both launchers:
+
+```
+autoload armed
+f=300  typed LOADM
+f=450  LOADM keystrokes drained
+f=1454 load complete (1004 frames)
+f=1575 typed EXEC - machine is yours
+```
+
+**Screenshots â€” supporting evidence only, surfaced for Jay and not interpreted (CLAUDE.md Â§3).**
+
+All under `build/a2c/`, which is **gitignored and therefore local-only** â€” they are not on the
+remote (Â§7 flag 4).
 
 MAME snapshots, RGB monitor, authentic render path:
 
@@ -284,19 +317,19 @@ MAME snapshots, RGB monitor, authentic render path:
 | `shot-06-ingame2.png` | +360 frames later |
 | `shot-07-final.png` | +960 frames later |
 
-Framebuffer decodes, native 320×200 at ×3 integer scale (idioms §11b): `screen-menu.png`,
+Framebuffer decodes, native 320Ã—200 at Ã—3 integer scale (idioms Â§11b): `screen-menu.png`,
 `screen-after-key.png`, `screen-menu-start.png`, `screen-ingame-1/2/3.png`.
 
 **One mechanical observation offered without interpretation.** The three in-game framebuffer
-captures — 840, 1200 and 1800 frames after `EXEC`, spanning ~16 emulated seconds — are
-**byte-identical to one another** (SHA-256 `cfba03856671…`), while the PC continues to range across
+captures â€” 840, 1200 and 1800 frames after `EXEC`, spanning ~16 emulated seconds â€” are
+**byte-identical to one another** (SHA-256 `cfba03856671â€¦`), while the PC continues to range across
 the code region. The menu captures do differ from each other when the selection changes, so the
 capture path does detect change. Whether anything in this game is expected to animate without
-player input is **Jay's call, not mine** — recorded as a measurement, not a defect.
+player input is **Jay's call, not mine** â€” recorded as a measurement, not a defect.
 
-### 6 — Reactive deviations and ROUTE ACCOUNTING
+### 6 â€” Reactive deviations and ROUTE ACCOUNTING
 
-**The route was as dispatched: A2a → A2b → A2c, live-disk, no fallback to poke.** The gate line
+**The route was as dispatched: A2a â†’ A2b â†’ A2c, live-disk, no fallback to poke.** The gate line
 says `live-disk` because that is what ran. Nothing was poked at any point.
 
 Deviations and additions, with what the commits actually contain:
@@ -304,12 +337,12 @@ Deviations and additions, with what the commits actually contain:
 1. **`tools/decbmerge.py` and `tools/fb2png.py` are more than the dispatch asked for.** It asked
    for a build script; the merge needs real DECB parsing, and putting it in a tested tool with a
    `report` mode is what made the segment table checkable at all. `fb2png.py` exists because MAME's
-   Lua snapshot appeared to be producing nothing (§7 flag 3) and idioms §11b prefers a direct
+   Lua snapshot appeared to be producing nothing (Â§7 flag 3) and idioms Â§11b prefers a direct
    framebuffer decode for this target regardless.
 
 2. **The build gates on a pinned SHA-256, not only on `dist/ROBOTSA.BIN`.** `/dist/` is gitignored,
    so **a clean checkout has no reference copy** and the dispatch's specified byte-compare
-   physically cannot run there — which would have made AC1's "runs from a clean checkout" and AC2's
+   physically cannot run there â€” which would have made AC1's "runs from a clean checkout" and AC2's
    byte-compare mutually unsatisfiable. The digest is pinned in both scripts and checked always;
    the byte-compare still runs additionally when `dist/` is present. Both paths were exercised.
 
@@ -319,20 +352,20 @@ Deviations and additions, with what the commits actually contain:
 4. **Four harness faults found and fixed mid-dispatch.** All four were mine, none were in the port,
    and three produced confident wrong readings:
 
-   - **Read-back of write-only registers.** v1 logged GIME state by reading `$FF90`–`$FF9F`. All
-     five registers returned the *same* byte every sample — the floating bus. Replaced with a write
+   - **Read-back of write-only registers.** v1 logged GIME state by reading `$FF90`â€“`$FF9F`. All
+     five registers returned the *same* byte every sample â€” the floating bus. Replaced with a write
      tap, which is what produced the `$80/$3E` evidence above.
    - **Polled for the first segment, not the last.** v1 treated the entry point landing as "loaded"
      and typed `EXEC` into a DECB still streaming 25 KB off the floppy. DECB does not poll the
      keyboard during disk I/O, the keystrokes were dropped, and **v1's honest conclusion was that
-     `EXEC` did not transfer control** — a false negative on the dispatch's milestone. Fixed by
+     `EXEC` did not transfer control** â€” a false negative on the dispatch's milestone. Fixed by
      gating on the last segment *and* the prompt returning. Apparent load time went from 162 frames
      to an actual 1,004.
    - **Snapshot verification checked the wrong path.** MAME resolves a snapshot filename relative
      to `-snapshot_directory`; the harness passed a path and then looked for the file at that
-     literal path. Five real PNGs existed at `snap/build/a2c/…` while the log reported `0 bytes`.
+     literal path. Five real PNGs existed at `snap/build/a2c/â€¦` while the log reported `0 bytes`.
    - **Read tap contaminated by loader traffic.** Taps on the code region and on the game-start
-     entry fired at frames 24 and 618 — before the program was even loaded (load completed at
+     entry fired at frames 24 and 618 â€” before the program was even loaded (load completed at
      1455). The one-shot latch then reported "IN GAME since frame 618" forever. Discarded in favour
      of PC sampling.
 
@@ -340,37 +373,60 @@ Deviations and additions, with what the commits actually contain:
    move-down and watched the menu variable change. That moved the selection **off** START GAME onto
    "cycle maps", whose handler deliberately branches back to the menu loop. The subsequent SPACE
    therefore cycled a map, and the run looked exactly like *"select key delivered, game refuses to
-   advance"* — a reportable fault under dispatch §6, with two independent instruments agreeing.
+   advance"* â€” a reportable fault under dispatch Â§6, with two independent instruments agreeing.
    Caught by reading the handler for the entry actually selected. The harness now restores the
    selection and asserts it before selecting. **Nothing was wrong with the port.**
 
 6. **No fix of any kind was attempted on the port**, and none was needed.
 
-### 7 — Uncertainty flags
+7. **POST-REPORT CORRECTION â€” the gate deliverable was wrong, and Jay caught it.**
+   A2 as first reported delivered PNG stills as the 25.3 artifact and offered a choice about where
+   to *store* them. Jay's ruling: *"verdict gate should always be a live run when possible; png
+   stills are last resort for visual verification."*
+
+   **This was already written down and I under-weighted it.** CLAUDE.md Â§4 classes `static-png` as
+   "**NOT a live gate** â€” verifies endpoints only; cannot show motion", and idioms Â§11 says visual
+   authority is Jay's live MAME run, never a Clyde snapshot. The dispatch's own AC6 asked for a
+   screenshot, and I treated satisfying AC6 as satisfying the gate. It isn't: AC6 is evidence that
+   the run happened, the gate is Jay running it.
+
+   Closed by `run.sh` / `run.bat` (commit `6edeca9`), with the RGB config verified against a
+   negative control. **The stills are demoted to supporting evidence throughout this report.**
+   Also fixed the second-order consequence: because the stills were the deliverable, their storage
+   location looked like the important open question, when it was a side issue.
+
+### 7 â€” Uncertainty flags
 
 1. **Segment count is 11, the dispatch says 10.** `build/ROBOTSA.BIN` has 9 game segments + tileset
    + level. The reference `dist/ROBOTSA.BIN` also has 11, so the two agree and byte-identity holds;
    I read the dispatch's "10" as a miscount. Flagged rather than reconciled silently.
 
-2. **The framebuffer decode assumes CPU `$8000` is the displayed region.** CLAUDE.md §2G states the
+2. **The framebuffer decode assumes CPU `$8000` is the displayed region.** CLAUDE.md Â§2G states the
    port writes a single buffer at `$8000`, and `$FF9D/$FF9E = $F0/$00` gives a GIME start of
-   `$78000`, which masks to the same physical block that CPU `$8000` maps to on this machine — so
+   `$78000`, which masks to the same physical block that CPU `$8000` maps to on this machine â€” so
    they agree *by derivation*. I did not verify the MMU mapping directly. **The MAME snapshots do
    not depend on this** and are the safer artifact of the two.
 
 3. **`screen:snapshot()` behaviour cost three runs.** It silently produces nothing under
    `-video none`, and with video enabled it resolves filenames relative to `-snapshot_directory`.
-   Recorded here and in §10 since idioms has no note on either.
+   Recorded here and in Â§10 since idioms has no note on either.
 
-4. **The screenshots are in `build/`, which is gitignored — they are local-only.** The Orchestrator
-   reading `wip` will not see them, and they are absent after a context reset. This is the same
-   invisible-artifact problem A1 solved with tracked manifests. **Not resolved here**, because the
-   dispatch is explicit that `build/` must not be committed. If these captures should survive, they
-   need a decision on where — `docs/reports/` alongside this file would work.
+4. **The screenshots are in `build/`, which is gitignored â€” they are local-only.** Now a *minor*
+   flag rather than a significant one: since the gate is a live run (Â§6 item 7), the stills are
+   supporting evidence and regenerating them is one command against a deterministic run. Still
+   worth knowing that the Orchestrator reading `wip` will not see them and that they are absent
+   after a context reset.
+
+   **They were also destroyed once and reported as present.** A manual
+   `Remove-Item -Recurse -Force build` for a clean-state test of the digest gate wiped `build/a2c/`,
+   and the first version of this report listed those paths as though the files were sitting there.
+   Not a build-script bug â€” `build.sh`/`build.bat` only `mkdir -p build` and never delete it. The
+   lesson is narrower and worth stating: **an artifact referenced in a report must be re-verified to
+   exist at report time**, not at the time it was produced.
 
 5. **`.gitattributes` still does not exist, and A2 has raised the stakes.** A1 flagged this; idioms
-   §14g now makes it directly load-bearing — `build.bat` **must** stay CRLF or `cmd.exe` cannot
-   parse it, and §14g says to pin it in `.gitattributes` rather than rely on any developer's
+   Â§14g now makes it directly load-bearing â€” `build.bat` **must** stay CRLF or `cmd.exe` cannot
+   parse it, and Â§14g says to pin it in `.gitattributes` rather than rely on any developer's
    `core.autocrlf`. Verified the committed blob holds 57 CRLF line endings and is byte-identical to
    disk, so it is correct *today* on this machine. A contributor with `core.autocrlf=input` could
    still normalise it. Recommend `*.bat text eol=crlf` plus `* -text` before anyone else clones.
@@ -379,63 +435,84 @@ Deviations and additions, with what the commits actually contain:
    the merge step. Python 3.13 was present; the tools use only the standard library. If the build
    must be Python-free, the merge is ~40 lines of anything.
 
-7. **The in-game framebuffer does not change across ~16 emulated seconds** (§5). Stated as a
-   measurement. I do not know whether this game animates without input, and I have not looked —
+7. **The in-game framebuffer does not change across ~16 emulated seconds** (Â§5). Stated as a
+   measurement. I do not know whether this game animates without input, and I have not looked â€”
    determining that would mean interpreting behaviour I was told to capture and report.
 
-8. **MAME `-verifyroms` reports `bad`.** Benign per idioms §14a — but §14a lists three missing
+8. **MAME `-verifyroms` reports `bad`.** Benign per idioms Â§14a â€” but Â§14a lists three missing
    alternate ROMs and this MAME (0.281) lists nine. Same class, larger list.
 
-### 8 — Follow-up candidates
+### 8 â€” Follow-up candidates
 
-- **A `.gitattributes`** — §7 flag 5. Now load-bearing for `build.bat`, not just tidiness.
-- **Decide where run captures live** — §7 flag 4. `build/` is correct for throwaway artifacts and
+- **A `.gitattributes`** â€” Â§7 flag 5. Now load-bearing for `build.bat`, not just tidiness.
+- **Decide where run captures live** â€” Â§7 flag 4. `build/` is correct for throwaway artifacts and
   wrong for the evidence behind a gate.
-- **Add the three new MAME idioms to `mame-idioms-coco3-port.md`** — §10. Idioms §2A rule 3 says a
-  discovered idiom goes in the file, but §2D reserves authored-doc bodies to the Orchestrator, so
+- **Add the three new MAME idioms to `mame-idioms-coco3-port.md`** â€” Â§10. Idioms Â§2A rule 3 says a
+  discovered idiom goes in the file, but Â§2D reserves authored-doc bodies to the Orchestrator, so
   they are surfaced here rather than written in.
 - **`imgtool`'s createopts need `=`** (`--tracks=35`, not `--tracks 35`), which fails with a bare
   usage message and exit 255. Minor, undocumented, cost a cycle.
-- **The `-seconds_to_run` budget is tight**: the full sequence needs ~3,450 frames ≈ 58 emulated
+- **The `-seconds_to_run` budget is tight**: the full sequence needs ~3,450 frames â‰ˆ 58 emulated
   seconds; 130 was used with margin.
 
-### 9 — User interaction during task
+### 9 â€” User interaction during task
 
-None. No questions raised, no clarification requested. The dispatch, CLAUDE.md and the idioms file
-between them covered everything, and the two things they did not cover (the clean-checkout `dist/`
-problem, and the Python dependency) were routine judgment calls recorded in §6 and §7.
+None during the dispatch itself. No questions raised, no clarification requested. The dispatch,
+CLAUDE.md and the idioms file between them covered everything, and the two things they did not
+cover (the clean-checkout `dist/` problem, and the Python dependency) were routine judgment calls
+recorded in Â§6 and Â§7.
 
-### 10 — Candidates captured this task
+**Two interactions after the first report was delivered:**
 
-Four new rows in `seeds/cocobots/live/`, pool commit **`8c58471`**, pushed. **New rows only — no
+1. *"i don't see build/a2c"* â€” the captures had been destroyed by my own clean-state test before I
+   reported their paths (Â§7 flag 4). Regenerated; the run is deterministic and reproduced
+   identically (`LOAD COMPLETE at frame 1455`, 1,004 frames, 8 snapshots, same byte sizes).
+2. *"verdict gate should always be a live run when possible. png stills are last resort for visual
+   verification."* â€” a correction to what the gate deliverable is. Acted on in Â§6 item 7; produced
+   `run.sh` / `run.bat` and reframed the stills throughout.
+
+### 10 â€” Candidates captured this task
+
+Four new rows in `seeds/cocobots/live/`, pool commit **`8c58471`**, pushed. **New rows only â€” no
 existing entry was read or edited.** All four are instrument failures from the first run of code
-nobody had ever executed, which is the environment dispatch §10 predicted would generate them.
+nobody had ever executed, which is the environment dispatch Â§10 predicted would generate them.
 
 | slug | one line |
 |---|---|
 | `read-back-of-a-write-only-register-is-the-floating-bus` | Check the observed thing is *readable* before building an instrument on reading it; five registers returning one value is the tell |
 | `poll-for-the-last-artifact-not-the-first` | A completion signal must be the last artifact a producer emits; the first-produced one arrives while it is still working |
-| `probe-that-moves-state-manufactures-the-defect` | A probe that mutates state owes a restore *and* an assertion — otherwise every downstream instrument faithfully measures the system you disturbed |
+| `probe-that-moves-state-manufactures-the-defect` | A probe that mutates state owes a restore *and* an assertion â€” otherwise every downstream instrument faithfully measures the system you disturbed |
 | `read-tap-as-execution-detector-is-contaminated` | A tap says an address was *accessed*, not that code *executed*; loaders and memory clears touch it too |
 
-Three MAME idioms discovered that belong in `mame-idioms-coco3-port.md` (§2D — Orchestrator's to
+A fifth row was added after Jay's gate correction (Â§6 item 7), pool commit `8421c93`:
+
+| slug | one line |
+|---|---|
+| `a-gate-artifact-is-not-a-gate-ship-the-live-path` | When the verdict belongs to a human, the deliverable is the means to exercise the system, not an artifact depicting it â€” an AC asking for a screenshot is evidence the run happened, not the gate |
+
+**`initiator: orchestrator`** on that one â€” Jay raised it, I did not catch it, and per the pool's
+Â§5 that distinction is load-bearing and must not be recorded as executor-originated.
+
+Three MAME idioms discovered that belong in `mame-idioms-coco3-port.md` (Â§2D â€” Orchestrator's to
 fold in):
 
 - `screen:snapshot()` **silently writes nothing under `-video none`**, and returns success.
-- With video enabled, a snapshot filename resolves **relative to `-snapshot_directory`** — passing
+- With video enabled, a snapshot filename resolves **relative to `-snapshot_directory`** â€” passing
   a path puts files somewhere unexpected and a naive existence check then reports failure.
-- **`imgtool` createopts require `=`** — `--tracks 35` fails with a bare usage message and exit 255;
+- **`imgtool` createopts require `=`** â€” `--tracks 35` fails with a bare usage message and exit 255;
   `--tracks=35` works.
 
-### 11 — Commit
+### 11 â€” Commit
 
 | | |
 |---|---|
 | `9cda36c` | A2: reproducible build, boot disk, and first live-disk run |
 | `1c99f20` | A2: gate the build on a pinned digest, not just `dist/ROBOTSA.BIN` |
-| branch | `wip`, pushed — `origin/wip` at `1c99f20` |
+| `b6e1b4e` | docs: add A2 Form B report |
+| `6edeca9` | A2: add `run.sh` / `run.bat` â€” the LIVE gate path |
+| branch | `wip`, pushed |
 | `main` | untouched at `a62809e` |
-| pool | `8c58471`, pushed |
+| pool | `8c58471` + `8421c93`, pushed |
 
-`wip` was pushed before this report was written (push-before-report, CLAUDE.md §2E). Working tree
+`wip` was pushed before this report was written (push-before-report, CLAUDE.md Â§2E). Working tree
 clean; no source file modified.
