@@ -25,6 +25,11 @@ LWASM=${LWASM:-lwasm}
 IMGTOOL=${IMGTOOL:-imgtool}
 PYTHON=${PYTHON:-python}
 
+# SHA-256 of the verified ROBOTSA.BIN, established in A2 against the reference
+# copy dist/ROBOTSA.BIN that shipped with the source package. Update this ONLY
+# alongside a deliberate, authorized change to the sources or assets.
+EXPECT_SHA256=13b8b4c078174abba8f059ebd35a1e9fb0b892b83a42ce8dd5fb34134b8f6c9a
+
 ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$ROOT"
 mkdir -p build
@@ -46,7 +51,15 @@ echo "=== 2/4  merge game + tileset + level_a ==="
 
 echo ""
 echo "=== 3/4  verify against the pre-verified reference ==="
-"$PYTHON" tools/decbmerge.py compare build/ROBOTSA.BIN dist/ROBOTSA.BIN
+# The pinned digest is the primary gate: /dist/ is gitignored, so a CLEAN
+# CHECKOUT HAS NO dist/ROBOTSA.BIN and the byte-compare below cannot run there.
+"$PYTHON" tools/decbmerge.py sha256 build/ROBOTSA.BIN --expect "$EXPECT_SHA256"
+if [ -f dist/ROBOTSA.BIN ]; then
+    "$PYTHON" tools/decbmerge.py compare build/ROBOTSA.BIN dist/ROBOTSA.BIN
+else
+    echo "  (dist/ROBOTSA.BIN absent — gitignored, so absent on a clean"
+    echo "   checkout. The pinned digest above is the gate.)"
+fi
 
 echo ""
 echo "=== 4/4  disk image ==="

@@ -20,6 +20,11 @@ if "%LWASM%"==""   set LWASM=lwasm
 if "%IMGTOOL%"=="" set IMGTOOL=imgtool
 if "%PYTHON%"==""  set PYTHON=python
 
+REM SHA-256 of the verified ROBOTSA.BIN, established in A2 against the reference
+REM copy dist\ROBOTSA.BIN that shipped with the source package. Update this ONLY
+REM alongside a deliberate, authorized change to the sources or assets.
+set EXPECT_SHA256=13b8b4c078174abba8f059ebd35a1e9fb0b892b83a42ce8dd5fb34134b8f6c9a
+
 if not exist build mkdir build
 
 echo === 1/4  assemble ===
@@ -33,8 +38,17 @@ if errorlevel 1 goto :failed
 
 echo.
 echo === 3/4  verify against the pre-verified reference ===
-"%PYTHON%" tools/decbmerge.py compare build/ROBOTSA.BIN dist/ROBOTSA.BIN
+REM The pinned digest is the primary gate: /dist/ is gitignored, so a CLEAN
+REM CHECKOUT HAS NO dist\ROBOTSA.BIN and the byte-compare cannot run there.
+"%PYTHON%" tools/decbmerge.py sha256 build/ROBOTSA.BIN --expect %EXPECT_SHA256%
 if errorlevel 1 goto :failed
+if exist dist\ROBOTSA.BIN (
+    "%PYTHON%" tools/decbmerge.py compare build/ROBOTSA.BIN dist/ROBOTSA.BIN
+    if errorlevel 1 goto :failed
+) else (
+    echo   ^(dist\ROBOTSA.BIN absent - gitignored, so absent on a clean
+    echo    checkout. The pinned digest above is the gate.^)
+)
 
 echo.
 echo === 4/4  disk image ===

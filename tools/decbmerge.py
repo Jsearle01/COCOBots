@@ -24,6 +24,7 @@ Addresses accept 0x1234, $1234 or decimal. Note that lwasm's --define does NOT
 
 import sys
 import argparse
+import hashlib
 
 
 class DecbError(Exception):
@@ -214,6 +215,29 @@ def cmd_compare(args):
     return 1
 
 
+def cmd_sha256(args):
+    """Check a file against a known digest.
+
+    dist/ROBOTSA.BIN is the pre-verified reference, but /dist/ is gitignored, so
+    a CLEAN CHECKOUT DOES NOT HAVE IT and a byte-compare cannot run there. The
+    expected digest is therefore pinned in the build script as well, which keeps
+    the reproducibility gate meaningful without committing a 27 KB binary.
+    """
+    with open(args.file, "rb") as handle:
+        blob = handle.read()
+    actual = hashlib.sha256(blob).hexdigest()
+    print("%s: %d bytes" % (args.file, len(blob)))
+    print("  sha256   %s" % actual)
+    if not args.expect:
+        return 0
+    print("  expected %s" % args.expect)
+    if actual == args.expect.lower():
+        print("  MATCH")
+        return 0
+    print("  MISMATCH — this build does not reproduce the verified binary")
+    return 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -233,6 +257,11 @@ def main():
     p_cmp.add_argument("a")
     p_cmp.add_argument("b")
     p_cmp.set_defaults(func=cmd_compare)
+
+    p_sha = sub.add_parser("sha256", help="check a file against a known digest")
+    p_sha.add_argument("file")
+    p_sha.add_argument("--expect", help="expected lowercase hex digest")
+    p_sha.set_defaults(func=cmd_sha256)
 
     args = parser.parse_args()
     try:
