@@ -14,12 +14,11 @@ HEAD at report `f8c9a58` + this report's commit. Tree clean throughout.
 locally and against the pushed blob on `origin/wip`. The before-hash matched too, so the base was
 the one the dispatch was written against.
 
-**A3b is BLOCKED and not delivered.** §3 states the gate-record content "is supplied separately by
-the Orchestrator alongside this dispatch — place it verbatim, do not rewrite or summarise it."
-**No such content arrived with the dispatch.** §5 makes the supplied wording the deliverable, so
-authoring it from §3's summary would be exactly the paraphrase both sections forbid.
-`docs/reports/A2-gate-verdict.md` therefore does not exist and **AC5 fails**. Everything else was
-completed; the gate record needs one round-trip. Detail in §7 flag 1.
+**A3b is complete, after one round-trip.** The gate-record content did not arrive with the dispatch
+(§3 says it is "supplied separately… alongside"), so it was requested rather than authored — §5
+makes the supplied wording the deliverable and §2D reserves authored-doc content to the
+Orchestrator. It was supplied on request and placed verbatim at `docs/reports/A2-gate-verdict.md`,
+106 lines, committed separately. **All ACs now pass.** Detail in §7 flag 1.
 
 One small accounting discrepancy in AC3's stated line counts, explained and benign — §4, §7 flag 2.
 
@@ -28,9 +27,8 @@ One small accounting discrepancy in AC3's stated line counts, explained and beni
 | file | change |
 |---|---|
 | `CLAUDE.md` | five in-place edits: +43 / −5 lines, 667 → 705 |
+| `docs/reports/A2-gate-verdict.md` | added, 106 lines, Orchestrator content placed verbatim |
 | `docs/reports/A3-claude-md-updates.md` | this report, added, committed separately |
-
-**Not created:** `docs/reports/A2-gate-verdict.md` — see §1 and §7 flag 1.
 
 Nothing under `src/`, `assets/`, `art/`, `tools/`, and neither build script, was touched. No
 section renumbered, nothing reordered, no text reflowed.
@@ -109,8 +107,20 @@ $ grep -n '⛔' CLAUDE.md
 One occurrence, and it is the explanatory sentence in the adaptation note. **No `⛔ OPEN` binding
 remains.**
 
-**AC5 — FAIL, blocked.** `docs/reports/A2-gate-verdict.md` does not exist. Its content was not
-supplied. See §1 and §7 flag 1. This is the only AC not met.
+**AC5 — PASS.** `docs/reports/A2-gate-verdict.md` exists, is tracked, is on `wip`, and is the
+supplied content verbatim:
+
+```
+bytes 4862 | lines 106 | CRLF 0 | BOM False | decodes clean: True
+line 4: 25.3: PASSED — Jay, live-disk, RGB — 2026-08-01
+7 of 7 observed-item rows present
+5 of 5 "does NOT establish" items present
+line 64: ## A2 §7 flag 7 — CLOSED by Jay's ruling
+```
+
+Placed unaltered — no rewording, no reflow, no summarising. The one judgment made was to treat the
+dispatch's own `**Place at:** …` line and its trailing separator as placement instruction rather
+than document body, and to keep the `# Gate record —` title as the document's H1. §7 flag 6.
 
 **AC6 — PASS.**
 
@@ -121,10 +131,14 @@ $ git status --short
 
 Only `CLAUDE.md`, plus this report under `docs/reports/`. Nothing outside those two paths.
 
-**AC7 — PARTIAL.** Two commits made, as required, and `main` is untouched at `a62809e`. But the
-first commit carries `CLAUDE.md` **only**, not "CLAUDE.md + the gate record", because the gate
-record could not be created. The separation itself is correct and the report is committed
-separately per §7's new standing convention.
+**AC7 — PASS on substance, three commits not two.** `main` is untouched at `a62809e`, and the
+report is committed separately from the dispatch's own work per §7's new standing convention.
+
+The dispatch specifies "one for `CLAUDE.md` + the gate record". Because the gate content arrived
+after `CLAUDE.md` was already verified and pushed, they are two commits rather than one — combining
+them was not possible without either holding A3a back or amending a pushed commit. The separation
+AC7 actually protects (dispatch work vs. report) is intact, and arguably improved: the `CLAUDE.md`
+commit remains exactly what AC1–AC4 were verified against.
 
 ### 5 — Verdict-time evidence
 
@@ -170,28 +184,29 @@ order given, text unaltered. No renumbering, no reordering, no reflow. Staged by
 
 Deviations:
 
-1. **A3b not performed** — content not supplied (§7 flag 1). This is the dispatch's only unmet
-   scope. I did not author a substitute: §3 says "place it verbatim, do not rewrite or summarise
+1. **A3b deferred one round-trip rather than synthesised.** The content did not arrive with the
+   dispatch. I did not author a substitute: §3 says "place it verbatim, do not rewrite or summarise
    it" and §5 says "the wording is the deliverable", and §3's own summary of what the record
-   contains is precisely the material a paraphrase would be built from. Writing it would satisfy
-   the AC while defeating its purpose, and §2D reserves authored-doc content to the Orchestrator.
+   contains is precisely the material a paraphrase would be built from. Writing it would have
+   satisfied the AC while defeating its purpose, and §2D reserves authored-doc content to the
+   Orchestrator. Content was supplied on request and placed verbatim.
 
 2. **Committed A3a rather than holding it for A3b.** The two are independent, A3a is fully verified
    by hash, and CLAUDE.md is the input every Phase C dispatch reads. Holding a verified,
-   self-contained rules update behind a missing paragraph would leave the standing rules stale for
-   no benefit. The gate record can be added as a further commit when the content arrives.
+   self-contained rules update behind a missing attachment would have left the standing rules stale
+   for no benefit. Consequence: three commits rather than the two AC7 specifies — see AC7.
 
 3. **Superset check computed as a set-difference**, not read from `git diff` (§3). This is what
    surfaced that the 5-vs-6 line count is a diff-pairing artifact rather than a content difference.
 
 ### 7 — Uncertainty flags
 
-1. **A3b's content did not arrive with the dispatch.** §3 says it is supplied "separately… alongside
-   this dispatch"; nothing accompanied it. Requested rather than invented. **What is needed:** the
-   verbatim body of `docs/reports/A2-gate-verdict.md` — per §3 it records the
-   `25.3: PASSED — Jay, live-disk, RGB — 2026-08-01` line, the seven observed items, what the gate
-   does and does not establish, A2 §7 flag 7 closed by Jay's ruling, and the carried-forward
-   follow-ups. On receipt it is one commit; nothing else in A3 depends on it.
+1. **A3b's content did not arrive with the dispatch — RESOLVED.** §3 says it is supplied
+   "separately… alongside this dispatch"; nothing accompanied it. Requested rather than invented,
+   supplied on request, placed verbatim in one commit. Recorded because the same phrasing will
+   appear in future dispatches and the correct response is worth having on file: complete every
+   independent part, name the missing artifact precisely, do not synthesise it from its own
+   description.
 
 2. **AC3's stated counts (6 removed / 44 added) do not match git's (5 / 43).** Net identical, and
    the sha256 match proves the content is exactly as intended. Cause is Edit 3 being a pure
@@ -215,19 +230,40 @@ Deviations:
    commit; the report's own SHA is in the delivering message rather than §11, as the new section
    requires.
 
+6. **Two judgment calls on what counts as the gate record's body.** The supplied message opens with
+   a `# Gate record —` title, then a `**Place at:** …` line, then a `---`. I kept the title as the
+   document's H1 and treated the `Place at:` line and its trailing separator as placement
+   instruction, not content — they address Clyde, not a future reader. Everything from the
+   `25.3: PASSED` block onward is verbatim, separators and all. Flagged because "verbatim" and "a
+   message containing instructions to me" are in mild tension, and the call was mine.
+
+7. **`docs/reports/` now holds two kinds of document.** Four Form B reports and one gate record,
+   which is an authored authoritative record rather than a dispatch report. Both belong in
+   `docs/reports/` on the naming convention §7 now standardises, but a gate record is §2D content —
+   Clyde renders it and must not edit its body. Not a problem today; worth a ruling before there
+   are several.
+
 ### 8 — Follow-up candidates
 
-- **Supply the A2 gate-verdict content** so A3b can close. The only outstanding item.
+Nothing outstanding from A3 itself. Carried forward, and now also recorded in the gate record's own
+follow-up table:
+
 - **A pinned-digest check on the three source blobs** — now recorded in CLAUDE.md §10 by Edit 5 as a
   gap `.gitattributes` cannot cover. Carried from A1b §8; still unimplemented.
+- **Decide where run captures live** (A2 §7 flag 4) — reduced in importance now that the gate is a
+  live run, but still open.
+- **Fold the three new MAME idioms into `mame-idioms-coco3-port.md`** (A2 §10) — §2D, Orchestrator's.
+- **A ruling on gate records vs. reports sharing `docs/reports/`** — §7 flag 7.
 - `main` remains at A1's tree (`a62809e`). Four dispatches of work now sit on `wip` unpromoted —
-  the Orchestrator's call, noted only so the divergence is visible.
+  the Orchestrator's call, noted only so the divergence is visible. **Phase A is complete**, per the
+  gate record, which makes this a natural promotion point.
 
 ### 9 — User interaction during task
 
-None. The one thing that would have warranted a question — the missing A3b content — is reported
-here with the specific artifact needed, rather than raised as a blocking question, because every
-other part of the dispatch could be completed and delivered without it.
+**One round-trip.** A3a was completed, verified and pushed, then the missing A3b content was named
+precisely and requested rather than raised as a blocking question — every other part of the
+dispatch could be completed without it. The content was supplied and placed verbatim in a single
+further commit. No other interaction.
 
 ### 10 — Candidate(s) captured this task
 
@@ -248,9 +284,10 @@ and declined rather than overlooked.
 | | |
 |---|---|
 | `CLAUDE.md` (A3a) | **`f8c9a58fadee1c91adf360a9c35f78fced336c0e`** |
+| `docs/reports/A2-gate-verdict.md` (A3b) | **`f5131cab367965c8d98ab8dd8d1b9f8a60b45e6d`** |
 | this report | committed separately; SHA in the delivering message per §7 |
 | branch | `wip`, pushed |
 | `main` | untouched at `a62809e` — not promoted, per §5 |
 | pool | no capture this task (§10) |
 
-Working tree clean. A3b outstanding.
+Working tree clean. **A3 complete — all ACs pass.**
