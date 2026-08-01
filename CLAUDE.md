@@ -613,6 +613,18 @@ dispatch that omits mention of it still requires it.
 - A commit cannot contain its own SHA, so the report's own commit SHA goes in the delivering
   message, not in §11.
 
+### Dispatches are self-contained (Jay, 2026-08-01)
+
+**A dispatch must be executable from its own text plus the repo, with nothing relayed by hand.**
+
+- Anything already in the repo — `CLAUDE.md`, the idioms files, prior reports under
+  `docs/reports/` — may be **referenced by section**.
+- Anything NOT in the repo — an Orchestrator measurement, a verdict, a threshold, a file to be
+  placed verbatim — must be **quoted in full inside the dispatch**.
+- **No "supplied separately", no "see the Orchestrator's message".** Jay is not a courier.
+- A dispatch that cannot be executed from dispatch text + repo alone is **defective**. Report it in
+  Form B §7 rather than asking for a relay.
+
 ### Structure
 
 ```
