@@ -122,6 +122,33 @@ def sample(sheet, rows, tiles):
     return out
 
 
+def sample_all(sheet, tiles):
+    """Every cell of all 256 tiles — the RENDER population.
+
+    Deliberately wider than sample(): no live/informative filter and no
+    $55/$66 exclusion. Those filters are right for DERIVING the palette (it
+    should serve what is actually drawn in-game, and a blank tile carries no
+    colour) and wrong for a preview, which must show the whole sheet. Filtering
+    the preview the same way left 70 tiles black — including 15 of the last
+    row, which is almost entirely non-live sprite/UI tiles.
+    """
+    q = quantise_sheet(sheet)
+    out = []
+    for t in range(256):
+        ty, tx = divmod(t, 16)
+        tile = q[ty * 24:ty * 24 + 24, tx * 24:tx * 24 + 24]
+        for k in range(9):
+            code = tiles[t][k]
+            if code is None:
+                continue                       # tile 255 BR: absent from the file
+            cy, cx = divmod(k, 3)
+            out.append(dict(tile=t, cell=k, glyph=code & 0x7F,
+                            inverse=bool(code & 0x80),
+                            want=tile[cy * 8:cy * 8 + 8,
+                                      cx * 8:cx * 8 + 8].reshape(NPIX).copy()))
+    return out
+
+
 def build_histograms(recs):
     """Per (glyph, pixel), how many normal / inverse cells demand each colour.
 
@@ -429,20 +456,41 @@ def variant_analysis(recs, pal, gidx, kmax=6):
 
 
 # ----------------------------------------------------------------- render ---
-def render_engine(sheet, pal, recs, patterns, gidx, out_path, scale=2):
+def render_engine(sheet, pal, tiles, out_path, scale=2):
     """Left: the sheet. Right: what the ENGINE would draw under this palette.
 
-    The right panel is built from the glyph patterns actually solved for, with
-    inverse cells rendered through 15-i — so it is what the tileset would put on
-    screen, not a per-pixel quantisation of the art. Mechanical; whether it looks
-    right is Jay's call (§3).
+    ALL 256 tiles. Patterns are solved from the full-tileset demand, so every
+    glyph has one — including glyphs that appear only in non-live tiles, which
+    the derivation population never sees. Inverse cells render through 15-i.
+
+    This is what the tileset would put on screen, not a per-pixel quantisation
+    of the art. Mechanical; whether it looks right is Jay's call (§3).
     """
     img = np.asarray(Image.open(sheet).convert('RGB'))
     h, w, _ = img.shape
-    out = np.zeros_like(img)
-    pal_rgb = np.array([GAMUT[c] for c in pal], dtype=np.uint8)
 
-    for r in recs:
+    allrecs = sample_all(sheet, tiles)
+    hN, hI, _, gidx = build_histograms(allrecs)
+    cN, cI = cost_tables(hN, hI)
+    patterns = glyph_patterns(pal, cN, cI)
+
+    # A cell with no glyph data cannot be drawn. Mark it with a grey check so it
+    # reads as "no data" rather than as a black tile (idioms §11c: use a colour
+    # the palette cannot produce). Only tile 255's BR qualifies.
+    out = np.zeros_like(img)
+    chk = np.indices((8, 8)).sum(axis=0) % 2
+    marker = np.stack([np.where(chk, 255, 96)] * 3, axis=-1).astype(np.uint8)
+    for t in range(256):
+        for k in range(9):
+            if tiles[t][k] is None:
+                ty, tx = divmod(t, 16)
+                cy, cx = divmod(k, 3)
+                out[ty * 24 + cy * 8:ty * 24 + cy * 8 + 8,
+                    tx * 24 + cx * 8:tx * 24 + cx * 8 + 8] = marker
+
+    pal_rgb = np.array([GAMUT[c] for c in pal], dtype=np.uint8)
+    drawn = 0
+    for r in allrecs:
         idx = patterns[gidx[r['glyph']]].copy()
         if r['inverse']:
             idx = 15 - idx
@@ -452,19 +500,32 @@ def render_engine(sheet, pal, recs, patterns, gidx, out_path, scale=2):
         y = ty * 24 + cy * 8
         x = tx * 24 + cx * 8
         out[y:y + 8, x:x + 8] = block
+        drawn += 1
+    assert drawn == 2303, 'drew %d cells, expected 2303 of 2304' % drawn
 
-    gap, strip = 8, 24
-    canvas = np.zeros((h + gap + strip, w * 2 + gap, 3), dtype=np.uint8)
+    gap, strip, label = 8, 24, 14
+    canvas = np.zeros((label + h + gap + strip, w * 2 + gap, 3), dtype=np.uint8)
     canvas[:, :] = 32
-    canvas[:h, :w] = img
-    canvas[:h, w + gap:] = out
+    canvas[label:label + h, :w] = img
+    canvas[label:label + h, w + gap:] = out
     for s in range(16):
         x0 = s * (w * 2 + gap) // 16
         x1 = (s + 1) * (w * 2 + gap) // 16
-        canvas[h + gap:, x0:x1] = GAMUT[pal[s]].astype(np.uint8)
+        canvas[label + h + gap:, x0:x1] = GAMUT[pal[s]].astype(np.uint8)
 
     im = Image.fromarray(canvas)
     im = im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+
+    # Label the panels. Asked once already which side was which; a caption in
+    # the file travels with it, a caption in a chat message does not.
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(im)
+    d.text((4, 3), 'Amiga_Artwork.png (source)', fill=(200, 200, 200))
+    d.text(((w + gap) * scale + 4, 3),
+           'engine render under the proposed palette - all 256 tiles',
+           fill=(200, 200, 200))
+    d.text((4, (label + h + gap) * scale + 2),
+           'palette slots 0-15, left to right', fill=(230, 230, 230))
     im.save(out_path)
     return out_path
 
@@ -540,8 +601,7 @@ def main():
 
     if args.render:
         print('  render -> %s'
-              % render_engine(args.sheet, pal, recs, pats, st['gidx'],
-                              args.render))
+              % render_engine(args.sheet, pal, st['tiles'], args.render))
 
     if args.json:
         doc = {

@@ -6,9 +6,23 @@ untouched; C3 applies this, after Jay has seen it.
 **Machine-readable:** [`assets/palette.json`](../../assets/palette.json).
 Reproduced by `python tools/palettederive.py --sheet art/Amiga_Artwork.png --objective floor`.
 
-**Visual, for Jay:** `build/c2/palette-preview.png` — the Amiga sheet beside **what the engine would
-actually draw** under this palette (real glyph patterns, inverse cells through 15−*i*), plus the
-slot-order swatch strip. Surfaced for inspection; this document does not say what it shows.
+**Visual, for Jay:** `build/c2/palette-preview.png` — the Amiga sheet (left) beside **what the
+engine would actually draw** under this palette (right): real glyph patterns, inverse cells through
+15−*i*, **all 256 tiles**. Panels are labelled in the image. The strip beneath is the palette in
+slot order, 0 to 15. Surfaced for inspection; this document does not say what it shows.
+
+The render population is deliberately **wider than the derivation population**. The palette is
+derived from live ∧ informative tiles only — the right filter for choosing colours that serve what
+is drawn in-game. Applying that filter to the *preview* left 70 tiles black, including 15 of the
+last row, which is almost entirely non-live sprite/UI tiles. The preview now draws every cell of all
+256 tiles, with glyph patterns solved from the full-tileset demand so glyphs that appear only in
+non-live tiles still have one.
+
+Fifteen tiles still render flat black — `0, 1, 2, 3, 14, 23, 175, 183, 238, 239, 243, 247, 252,
+253, 254`. That is correct output, not missing data: these are C1's blank tileset tiles, whose
+glyphs are entirely one index, over uniform art. Verified drawn rather than skipped. Tile 255's
+bottom-right cell is absent from `tileset.bin` (the file is one byte short) and is marked with a
+grey check, being the only cell in the sheet that cannot be drawn at all.
 
 > **Supersedes the first C2 derivation**, which modelled each 8×8 cell as one ink colour plus one
 > paper colour. Jay corrected that: **glyphs are 16-colour capable.** `DoRegular` copies character
