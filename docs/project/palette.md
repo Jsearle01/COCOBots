@@ -1,7 +1,37 @@
 # Proposed CoCo3 palette, derived from the Amiga artwork
 
-**Status:** PROPOSAL, C2 recon, 2026-08-01. **Not applied.** `src/graphics.asm` is untouched; C3
-applies this, after Jay has seen it.
+> ## ⛔ SUPERSEDED — DO NOT CONSUME. Re-derivation required.
+>
+> **Jay, 2026-08-01:** the glyphs are 16-colour capable. He is right; this derivation is not.
+>
+> Every glyph is 64 independent 4-bit palette indices — `BITMAP_PLOTTER`'s `DoRegular` copies
+> character bytes to the framebuffer unmodified (`PULU D,Y` / `STD ,X` / `STY 2,X`), so every
+> nibble is a palette index. CLAUDE.md §4 states this plainly; the current font is 2-colour by
+> deliberate choice, not by format.
+>
+> **The derivation below models each 8×8 cell as one ink colour plus one paper colour.** That
+> binary reduction was correct in C1, where it matched *shapes* against a monochrome font. Carrying
+> it into a *colour* model was an error, and it costs:
+>
+> | | |
+> |---|---|
+> | cells actually describable with 2 colours | **6.8%** |
+> | pixels captured by the top-2 reduction | **69.4%** of 64 |
+> | distinct colours this derivation saw | 26 |
+> | distinct colours actually present | **46** (matches §2M independently) |
+>
+> **Invalid below:** the 16 chosen colours, the complement-demand analysis (§4), every survival and
+> ordering-efficiency figure (§1, §5), and the glyph-splitting ceiling (§6) — all computed under the
+> 2-colour model.
+>
+> **Still valid:** the ordering *structure* in §3 (index *i* pairs with 15−*i*; only glyphs used
+> both ways constrain anything), the sampling population in §2, the control method in §7, and
+> C1's identity correspondence, which this depends on but did not use the colour model.
+>
+> Retained as the record of a superseded method. `assets/palette.json` carries the same flag.
+
+**Status:** SUPERSEDED. Was: PROPOSAL, C2 recon, 2026-08-01. **Never applied.** `src/graphics.asm`
+is untouched.
 
 **Machine-readable:** [`assets/palette.json`](../../assets/palette.json) — slot order, per-slot
 provenance, the complement pairing with its evidence, and the inverse-failure list by tile.

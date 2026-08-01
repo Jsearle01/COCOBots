@@ -1,4 +1,14 @@
 {
+ "SUPERSEDED": true,
+ "do_not_consume": "Glyphs are 16-colour capable (64 independent 4-bit indices per glyph); this derivation modelled each 8x8 cell as one ink + one paper colour. Only 6.8% of cells are describable that way and the reduction captured 69.4% of pixels, seeing 26 of the 46 colours actually present. Colours, complement demand, survival figures and the glyph-splitting ceiling are all invalid. Re-derivation required.",
+ "superseded_on": "2026-08-01",
+ "superseded_by": "Jay, during C2 delivery",
+ "still_valid": [
+  "ordering structure: index i pairs with 15-i under COMA/COMB",
+  "only glyphs used both normally and inverted impose constraints",
+  "sampling population: 186 live+informative tiles, 1417 cells, 55 glyphs",
+  "C1 identity correspondence (did not use the colour model)"
+ ],
  "source_sheet": "art/Amiga_Artwork.png",
  "derived": "2026-08-01, dispatch C2",
  "applied": false,
