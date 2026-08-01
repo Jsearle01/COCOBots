@@ -21,6 +21,11 @@
 /snap/
 __pycache__/
 
+# Glyph editor crash buffer (C6). The authored font and its versioned snapshots
+# under /assets/authored/ ARE tracked — that is the protection. This one file is
+# a rolling autosave, rewritten every few seconds while drawing.
+/assets/authored/autosave/
+
 # Packaging artifacts — must never be committed
 /*.zip
 PLACEMENT.md
