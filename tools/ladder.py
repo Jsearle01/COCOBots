@@ -279,6 +279,23 @@ def main():
     im.save(os.path.join(args.out, 'ladder.png'))
     print('ladder -> %s/ladder.png' % args.out)
 
+    # ------------------------------------------------- pairwise vs source ---
+    # One image per rung, source beside that budget alone. Comparing across a
+    # five-panel row means holding the source in your head; this does not.
+    for tag, err, img in panels:
+        total = int(tag.split()[0])
+        gap2, lab2, sc2 = 10, 14, 3
+        cw2 = w * 2 + gap2
+        cv = np.full((lab2 + h, cw2, 3), 32, dtype=np.uint8)
+        cv[lab2:lab2 + h, 0:w] = src
+        cv[lab2:lab2 + h, w + gap2:] = img
+        pi = Image.fromarray(cv).resize((cw2 * sc2, (lab2 + h) * sc2),
+                                        Image.NEAREST)
+        label(pi, 'Amiga_Artwork.png (source)', 4, 3)
+        label(pi, '%s   err %.2f' % (tag, err), (w + gap2) * sc2 + 4, 3)
+        pi.save(os.path.join(args.out, 'pair-%d.png' % total))
+    print('pairs -> %s/pair-{128,192,221,256}.png' % args.out)
+
     # -------------------------------------------------------- worst tiles ---
     # Per-tile residual at 221 — the configuration on the decision. The aggregate
     # scalar hides WHERE error lands; this is where a structural failure shows.
