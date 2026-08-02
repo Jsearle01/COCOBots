@@ -302,13 +302,33 @@ def classify(codes=None, repo=None):
     }
 
 
+def br255_has_storage(repo=None):
+    """Does TILE_DATA_BR[255] actually exist in assets/tileset.bin?
+
+    DERIVED from the file, never asserted. C7 completed the file to 2,816 bytes;
+    a hardcoded warning would have kept telling the operator not to spend the
+    slot long after the reason had gone, and a hardcoded absence of one would
+    have gone quiet if a converter ever regenerated the short file. The question
+    is cheap to ask, so it is asked."""
+    from tilemap import load_codes
+    path = os.path.join(repo or C.REPO, 'assets', 'tileset.bin')
+    try:
+        return load_codes(path)[255][8] is not None
+    except (OSError, ValueError):
+        return False
+
+
 def note(t, cls):
     """The one-line explanation the editor shows for a tile."""
     k = cls['kind'][t]
     if t == EDITOR_ARTIFACT:
-        return ('AVAILABLE - editor artifact: draws "255", the tile-count caption '
-                'baked in from image.png. !! bottom-right cell has NO STORAGE '
-                'until tileset.bin is 2,816 bytes - do not spend this slot yet')
+        s = ('AVAILABLE - editor artifact: draws "255", the tile-count caption '
+             'baked in from image.png. ')
+        return s + ('all nine cells have storage (tileset.bin is 2,816 bytes, C7) '
+                    '- free to use'
+                    if br255_has_storage() else
+                    '!! bottom-right cell has NO STORAGE until tileset.bin is '
+                    '2,816 bytes - do not spend this slot yet')
     if k == AVAILABLE:
         return 'AVAILABLE - empty slot, free for new content (needs level placement to appear)'
     if k == UNVERIFIED:

@@ -153,8 +153,16 @@ def t_crop():
 def t_affected():
     cfg = C.CONFIGS['shipped']
     m = Mapping(cfg)
-    expect = {0x4D: (122, 210), 0x20: (121, 437), 0x3A: (108, 396),
+    # C7 completed tileset.bin to 2,816 bytes, so TILE_DATA_BR[255] now exists
+    # and holds $20. Glyph $20 therefore gains exactly one tile and one cell
+    # (121/437 -> 122/438) and the cell total goes 2,303 -> 2,304. Every other
+    # figure the C6 dispatch quotes is unchanged — which is the check that the
+    # one-byte append touched nothing else.
+    expect = {0x4D: (122, 210), 0x20: (122, 438), 0x3A: (108, 396),
               0x66: (88, 268), 0x5F: (83, 140), 0x64: (60, 176), 0x67: (33, 81)}
+    cells = sum(1 for t in range(256) for k in range(9) if m.codes[t][k] is not None)
+    check('affected: 2,304 cells post-C7', cells == 2304 and 255 in m.tiles_of[0x20],
+          'was 2,303; tile 255 BR is now $20')
     bad = [('$%02X' % g, m.n_tiles(g), m.n_cells(g))
            for g, (t, c) in expect.items()
            if (m.n_tiles(g), m.n_cells(g)) != (t, c)]
@@ -259,19 +267,32 @@ def t_classification():
     check('class: no queue drops a tile',
           all(set(qs[n]) == set(range(256)) for n in ('worst', 'cleanup', 'all')),
           'worst/cleanup/all each reach all 256')
-    check('class: tile 255 warns about storage',
-          'NO STORAGE' in m.tile_note(255) and 255 in cls['available'],
-          'available, but not spendable until tileset.bin is 2,816 bytes')
+    # the warning must track the FILE, not a hardcoded sentence: present while
+    # TILE_DATA_BR[255] is missing, gone once C7's byte is there
+    has = TC.br255_has_storage()
+    check('class: tile 255 note tracks the file',
+          255 in cls['available']
+          and ('NO STORAGE' in m.tile_note(255)) == (not has),
+          'storage present: %s -> %s' % (has, m.tile_note(255)[-46:]))
 
 
 def t_nodata():
-    for key in ('a192', 'shipped'):
-        m = Mapping(C.CONFIGS[key])
-        ok = m.codes[255][8] is None and m.glyphs[255][8] is None
-        others = sum(1 for t in range(256) for k in range(9)
-                     if m.codes[t][k] is None)
-        check('no data: tile 255 BR only (%s)' % key, ok and others == 1,
-              '%d cell(s) without data' % others)
+    """C7 fixed assets/tileset.bin to its full 2,816 bytes, so the SHIPPED
+    mapping has no missing cell any more. The a192 table still does: it is a C4
+    artifact generated from the 2,815-byte file, and regenerating it is out of
+    C7's scope. The no-data PATH still has to work for that reason, so it is
+    asserted where it applies and asserted absent where it was fixed."""
+    m = Mapping(C.CONFIGS['shipped'])
+    missing = sum(1 for t in range(256) for k in range(9) if m.codes[t][k] is None)
+    check('no data: shipped has none post-C7',
+          missing == 0 and m.codes[255][8] == 0x20,
+          'TILE_DATA_BR[255] = $%02X' % m.codes[255][8])
+
+    a = Mapping(C.CONFIGS['a192'])
+    others = sum(1 for t in range(256) for k in range(9) if a.codes[t][k] is None)
+    check('no data: a192 still has tile 255 BR',
+          a.codes[255][8] is None and a.glyphs[255][8] is None and others == 1,
+          'C4 artifact, generated pre-C7 — regenerating it is out of scope')
     # and it must render as NODATA, not as glyph $00
     cfg = C.CONFIGS['a192']
     m = Mapping(cfg)

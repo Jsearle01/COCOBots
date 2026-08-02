@@ -25,10 +25,16 @@ LWASM=${LWASM:-lwasm}
 IMGTOOL=${IMGTOOL:-imgtool}
 PYTHON=${PYTHON:-python}
 
-# SHA-256 of the verified ROBOTSA.BIN, established in A2 against the reference
-# copy dist/ROBOTSA.BIN that shipped with the source package. Update this ONLY
-# alongside a deliberate, authorized change to the sources or assets.
-EXPECT_SHA256=13b8b4c078174abba8f059ebd35a1e9fb0b892b83a42ce8dd5fb34134b8f6c9a
+# SHA-256 of the verified ROBOTSA.BIN. Update this ONLY alongside a deliberate,
+# authorized change to the sources or assets.
+#   A2  13b8b4c0...  the reference copy that shipped with the source package
+#   C7  c0254b09...  assets/tileset.bin completed to its full 2,816 bytes
+# C7 note: the tree no longer reproduces the A2-era dist/ROBOTSA.BIN, BY
+# AUTHORIZATION — the tileset segment is one byte longer. That copy is kept
+# locally as dist/ROBOTSA.BIN.pre-c7 and is deliberately NOT refreshed from our
+# own build: a reference regenerated from the thing it checks proves nothing
+# (CLAUDE.md 8). The pinned digest below is the gate.
+EXPECT_SHA256=c0254b09aeb5498dc03956ebe8282dd574cf30edb3f231bbfed010d697f8e6c4
 
 ROOT=$(cd "$(dirname "$0")" && pwd)
 cd "$ROOT"
