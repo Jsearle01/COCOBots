@@ -1,0 +1,35 @@
+PASS AC1 minus button exists                      2 found (sheet + glyph)
+PASS AC1 plus button exists                       2 found
+PASS AC1 fit button exists                        2 found
+PASS AC1 clicking + zooms both panels             sheet 1->2  glyph 8->9
+PASS AC1 clicking - zooms out                     sheet 1  glyph 8
+PASS AC1 fit buttons work                         glyph 8x  sheet 1x
+PASS AC1 zoom readout visible                     ['8x', '1x']
+PASS AC1 sheet-zoom key works with focus elsewhere focus on .!frame.!button; [ ] still reached the toplevel  1->2
+PASS AC3 selected tile still in view at 5x        tile 250 centre (1260,1860) in viewport x[1078..1443] y[1481..1920]
+PASS AC3 and centred as far as the scroll range allows view at (1078,1481), clamped ideal (1078,1481), error 0 px
+PASS AC3 a mid-sheet tile is centred outright     tile 136 off-centre by 0 px (tolerance 120)
+PASS AC3 a tile is always selected                tile=136 cell=0 — st is seeded with 0 and select() clamps to 0..255, so no unselected state exists
+PASS AC3 out-of-range selection clamps, no crash  select(-5) then select(999) -> 255
+PASS AC3b selection does not reset zoom           after 5 selections: sheet 7x glyph 8x view amiga_raw
+PASS AC4 all 9 cells resolve in both panels       []
+PASS AC4 cell boundaries                          []
+PASS AC4 outside the tiles is None                gutter and below
+PASS AC4 a real click selects that cell           clicked BM -> cell 7
+PASS AC5 edited cell has its own mark             tile $00: 304 edit-tick px, 4128 sibling px, 1308 cursor px
+PASS AC6 setup: a stroke is live                  tile $00 glyph $35 in cells (0, 1)
+PASS AC6 re-selecting the same glyph is a no-op   undo depth 1 kept, still dirty, glyph still $35
+PASS AC6 selecting the SAME cell returns False    no redraw, no state change
+PASS AC7 Tab traverses all nine cells TL->BR      [0, 1, 2, 3, 4, 5, 6, 7, 8]
+PASS AC7 Shift-Tab walks back                     cell 0
+PASS AC8 three reference buttons exist            []
+PASS AC8 every reference view reachable by click alone raw -> quantised -> oracle, all three
+PASS AC8 the ACTIVE view is named on screen       []
+PASS AC8 view is written to the sidecar           {'view': 'amiga_quant', 'zoom': 11, 'sheet_zoom': 3, 'tile': 42, 'cell': 5, 'queue': 'worst'}
+PASS AC2 wheel bindings enumerated                ['sheet<Shift-MouseWheel>', 'sheet<MouseWheel>']
+PASS AC2 every wheel binding is pan, and scrollbars duplicate it 2 wheel bindings (all pan), 2 scrollbars
+PASS check_fits passes at every SHEET zoom        []
+PASS glyph zoom self-limits before clipping       held at 10x (ceiling offered: 24x) on a 864px screen; layout still fits
+PASS glyph zoom returns to the default cleanly    
+
+33 checks, 0 failed
