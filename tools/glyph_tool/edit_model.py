@@ -124,12 +124,75 @@ class FontEdit:
         self.load_baseline = self.font.copy()          # the on-open bytes, for round-trip
         self.glyphs = [GlyphEdit(i, self.font[i]) for i in range(len(self.font))]
         self.touched_at = {}                           # glyph -> unix time of last edit
+        # C6-A3: ONE history across all glyphs, so accepting nine cells is one
+        # undo and not nine. Each entry is the list of glyphs that one operation
+        # touched; undoing pops the entry and undoes that stroke on each of them.
+        # Per-glyph stacks still exist underneath and still work — this only
+        # records WHICH glyphs moved together, which is the part a per-glyph
+        # stack cannot know.
+        self.history, self.future = [], []
 
     def __getitem__(self, i):
         return self.glyphs[i]
 
     def note_edit(self, i):
         self.touched_at[i] = time.time()
+
+    # ---- one history across all glyphs (C6-A3) ------------------------------
+    def record(self, glyphs):
+        """Log one operation. Callers push the per-glyph stroke themselves; this
+        records which glyphs moved together so undo can move them back together."""
+        gs = sorted(set(glyphs))
+        if gs:
+            self.history.append(gs)
+            self.future.clear()
+            if len(self.history) > MAX_UNDO:
+                self.history.pop(0)
+        return gs
+
+    def apply_txn(self, changes):
+        """Write several glyphs as ONE undoable operation.
+
+        `changes` is {glyph index: 8x8 array}. Returns the glyphs written.
+        Accepting nine cells that resolve to five glyphs is one history entry,
+        so one Ctrl-Z puts all five back — C6-A3 AC5, and the thing the dispatch
+        says is most annoying to get wrong.
+        """
+        touched = []
+        for g in sorted(changes):
+            ge = self.glyphs[g]
+            if np.array_equal(ge.px, changes[g]):
+                continue                       # already identical: not a change
+            ge.begin_stroke()
+            ge.px[:] = changes[g]
+            ge._just_reverted = False
+            touched.append(g)
+        return self.record(touched)
+
+    def can_undo(self):
+        return bool(self.history)
+
+    def can_redo(self):
+        return bool(self.future)
+
+    def undo(self):
+        """Undo the last operation, however many glyphs it touched."""
+        if not self.history:
+            return None
+        gs = self.history.pop()
+        for g in gs:
+            self.glyphs[g].undo_stroke()
+        self.future.append(gs)
+        return gs
+
+    def redo(self):
+        if not self.future:
+            return None
+        gs = self.future.pop()
+        for g in gs:
+            self.glyphs[g].redo_stroke()
+        self.history.append(gs)
+        return gs
 
     def edited(self):
         return [g for g in self.glyphs if g.is_dirty()]

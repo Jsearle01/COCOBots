@@ -28,6 +28,12 @@ import os
 import glyphio
 
 UNTOUCHED, EDITED, DONE = 'untouched', 'edited', 'done'
+# C6-A3: same protection, different provenance. A glyph taken wholesale from the
+# quantised reference and one drawn by hand are both authored and both must
+# survive a converter re-run — but you will want to know later which was which,
+# because "accepted" means the structure came from the art and "edited" means it
+# came from Jay.
+ACCEPTED = 'accepted'
 
 
 def _now():
@@ -47,6 +53,7 @@ class Progress:
         self.done = set()
         self.first_edit = {}
         self.last_edit = {}
+        self.accepted = {}          # glyph -> when it was taken from the quantised art
         self.source_sha = None
         self.saves = 0
         # C6-A2 AC8: viewing state persists across sessions with the rest of the
@@ -66,6 +73,7 @@ class Progress:
         self.done = set(d.get('done', []))
         self.first_edit = {int(k): v for k, v in d.get('first_edit', {}).items()}
         self.last_edit = {int(k): v for k, v in d.get('last_edit', {}).items()}
+        self.accepted = {int(k): v for k, v in (d.get('accepted') or {}).items()}
         self.source_sha = d.get('source_sha256')
         self.saves = d.get('saves', 0)
         self.ui = d.get('ui', {}) or {}
@@ -76,6 +84,8 @@ class Progress:
         for i in range(self.n):
             if i in self.done:
                 states[i] = DONE
+            elif i in self.accepted and i not in self.last_edit:
+                states[i] = ACCEPTED         # taken from the art, not since redrawn
             elif i in edited or i in self.last_edit:
                 states[i] = EDITED
             else:
@@ -93,10 +103,12 @@ class Progress:
             'counts': {
                 'untouched': sum(1 for v in states.values() if v == UNTOUCHED),
                 'edited': sum(1 for v in states.values() if v == EDITED),
+                'accepted': sum(1 for v in states.values() if v == ACCEPTED),
                 'done': len(self.done),
             },
             'state': {str(i): states[i] for i in range(self.n)},
             'done': sorted(self.done),
+            'accepted': {str(k): v for k, v in sorted(self.accepted.items())},
             'first_edit': {str(k): v for k, v in sorted(self.first_edit.items())},
             'last_edit': {str(k): v for k, v in sorted(self.last_edit.items())},
         }
@@ -105,6 +117,18 @@ class Progress:
     def note_edit(self, glyph):
         self.first_edit.setdefault(glyph, _now())
         self.last_edit[glyph] = _now()
+
+    def note_accept(self, glyph, tile, cell):
+        """Record provenance for a glyph taken from the quantised reference.
+        Deliberately NOT note_edit: a later hand stroke promotes it to `edited`,
+        which is the honest description once someone has drawn over it."""
+        self.accepted[glyph] = '%s tile $%02X %s' % (_now(), tile, cell)
+
+    def forget_accept(self, glyphs):
+        """Undo of an accept must take the provenance with it, or the sidecar
+        claims art the font no longer holds."""
+        for g in glyphs:
+            self.accepted.pop(g, None)
 
     def toggle_done(self, glyph):
         if glyph in self.done:
@@ -116,6 +140,8 @@ class Progress:
     def state(self, glyph, fontedit):
         if glyph in self.done:
             return DONE
+        if glyph in self.accepted and glyph not in self.last_edit:
+            return ACCEPTED
         if fontedit[glyph].is_dirty() or glyph in self.last_edit:
             return EDITED
         return UNTOUCHED

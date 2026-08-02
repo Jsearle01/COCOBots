@@ -473,6 +473,243 @@ def t_check_fits(app):
           st['zoom'] == 8 and gt['check_fits']())
 
 
+# ------------------------------------------------------------- C6-A3 -------
+def t_accept_buttons(app):
+    """AC1 — visible, labelled, shortcut printed."""
+    bs = buttons(app.root)
+    want = ['accept cell (a)', 'accept tile (9)  (Shift-A)']
+    check('A3-AC1 accept buttons exist and name their key',
+          all(w in bs for w in want), [w for w in want if w not in bs])
+    labels = []
+
+    def walk(w):
+        import tkinter as tk
+        for c in w.winfo_children():
+            if isinstance(c, tk.Label):
+                labels.append(str(c.cget('text')))
+            walk(c)
+    walk(app.root)
+    check('A3-AC1 the source is named beside them',
+          any('QUANTISED' in t for t in labels),
+          next((t for t in labels if 'QUANTISED' in t), ''))
+
+
+def t_accept_cost(app):
+    """AC2 — the cost is computed from the LOADED tileset, not hardcoded."""
+    import accept as ACC
+    gt = app.gt
+    m, refc = gt['mapping'], gt['ref']
+    for tile in (4, 136):
+        p = ACC.plan(refc.qidx, m, tile, range(9))
+        line = ACC.cost_line(p, m, tile, list(range(9)))
+        check('A3-AC2 cost for tile %d' % tile,
+              len(p['tiles']) > 0 and 'changes %d tiles' % len(p['tiles']) in line,
+              '%d distinct glyphs -> %d tiles; %d conflicting'
+              % (len(p['changes']), len(p['tiles']),
+                 len([g for g in p['conflicts'] if g not in p['identical']])))
+    # and it must react to the checkboxes rather than being a constant
+    gt['select'](4, 0)
+    gt['set_all_cells'](1)
+    gt['refresh_cost']()
+    app.settle(1)
+    full = _cost_text(app)
+    gt['set_all_cells'](0)
+    gt['cell_vars'][0].set(1)
+    gt['refresh_cost']()
+    app.settle(1)
+    one = _cost_text(app)
+    check('A3-AC2 cost tracks the tick boxes', full != one and one,
+          'nine cells vs one produce different costs')
+    gt['set_all_cells'](1)
+    gt['refresh_cost']()
+
+
+def _cost_text(app):
+    import tkinter as tk
+    out = []
+
+    def walk(w):
+        for c in w.winfo_children():
+            if isinstance(c, tk.Label) and str(c.cget('fg')) == '#ffcc66':
+                out.append(str(c.cget('text')))
+            walk(c)
+    walk(app.root)
+    return out[0] if out else ''
+
+
+def t_accept_conflict(app):
+    """AC3 — no silent last-write-wins."""
+    import accept as ACC
+    gt = app.gt
+    m, refc = gt['mapping'], gt['ref']
+    # a tile with a REAL conflict — the same glyph written from two cells whose
+    # art DIFFERS. A tile where the competing art happens to agree proves nothing
+    # about the tie-break, so it is not good enough for this check.
+    tile, p, real = None, None, {}
+    for cand in range(256):
+        pc = ACC.plan(refc.qidx, m, cand, range(9))
+        rc = {g: ks for g, ks in pc['conflicts'].items() if g not in pc['identical']}
+        if rc:
+            tile, p, real = cand, pc, rc
+            break
+    check('A3-AC3 a tile with DIFFERING conflicting art exists', bool(real),
+          'tile $%02X, %d glyph(s) written from >1 cell with different art: %s'
+          % (tile, len(real), ', '.join('$%02X x%d' % (g, len(k))
+                                        for g, k in sorted(real.items()))))
+    # TL->BR: the winner must be the LOWEST cell index of each conflicted glyph
+    bad = [(g, p['winners'][g], ks) for g, ks in p['conflicts'].items()
+           if p['winners'][g] != min(ks)]
+    check('A3-AC3 first cell in TL->BR order wins', not bad, str(bad) or
+          'winner == min(cells) for all %d' % len(p['conflicts']))
+    check('A3-AC3 dropped cells are recorded',
+          all(sorted(p['dropped'].get(g, [])) == sorted(set(ks) - {p['winners'][g]})
+              for g, ks in p['conflicts'].items()),
+          '%d glyphs with dropped cells' % len(p['dropped']))
+    if real:
+        line = ACC.cost_line(p, m, tile, list(range(9)))
+        out = ACC.outcome_line(p, m, tile)
+        check('A3-AC3 conflict stated BEFORE and AFTER the write',
+              'conflicting art' in line and 'DROPPED' in out,
+              'before: names them; after: names what was dropped')
+    else:
+        check('A3-AC3 conflict stated BEFORE and AFTER the write', True,
+              'all conflicts on this tile carry identical art')
+
+
+def t_accept_undo(app):
+    """AC5 — ONE undo reverts an entire accept, byte-identically."""
+    import glyphio
+    gt = app.gt
+    fe = gt['fe']
+    gt['select'](4, 0)
+    gt['set_all_cells'](1)
+    app.settle(1)
+    before = glyphio.sha256_bytes(glyphio.pack(fe.font))
+    depth = len(fe.history)
+    gt['accept_tile']()
+    app.settle(1)
+    after = glyphio.sha256_bytes(glyphio.pack(fe.font))
+    check('A3-AC5 accept changed the font', after != before,
+          '%s -> %s' % (before[:12], after[:12]))
+    check('A3-AC5 accept is exactly ONE history entry',
+          len(fe.history) == depth + 1,
+          '%d glyphs written in 1 entry' % len(fe.history[-1]))
+    gt['do_undo']()
+    app.settle(1)
+    back = glyphio.sha256_bytes(glyphio.pack(fe.font))
+    check('A3-AC5 one undo restores byte-identically', back == before,
+          '%s == %s' % (back[:12], before[:12]))
+    check('A3-AC5 undo cleared the accepted provenance',
+          not any(g in gt['prog'].accepted for g in range(len(fe.font))),
+          'sidecar does not claim art the font no longer holds')
+
+
+def t_accept_subset(app):
+    """AC4 — per-cell opt-out writes only the ticked cells."""
+    import accept as ACC
+    import numpy as np
+    gt = app.gt
+    m, fe, refc = gt['mapping'], gt['fe'], gt['ref']
+    gt['select'](4, 0)
+    gt['set_all_cells'](0)
+    for k in (0, 1, 2):                       # top row only
+        gt['cell_vars'][k].set(1)
+    gt['refresh_cost']()
+    app.settle(1)
+    check('A3-AC4 included_cells reflects the boxes',
+          gt['included_cells']() == [0, 1, 2], gt['included_cells']())
+    expect = ACC.plan(refc.qidx, m, 4, [0, 1, 2])['changes']
+    excluded = ACC.plan(refc.qidx, m, 4, [3, 4, 5, 6, 7, 8])['changes']
+    snap = {g: fe.font[g].copy() for g in set(expect) | set(excluded)}
+    gt['accept_tile']()
+    app.settle(1)
+    wrote_wanted = all(np.array_equal(fe.font[g], expect[g]) for g in expect)
+    only_excluded = [g for g in excluded if g not in expect]
+    kept = all(np.array_equal(fe.font[g], snap[g]) for g in only_excluded)
+    check('A3-AC4 only the ticked cells were written', wrote_wanted and kept,
+          'wrote %s; left %s untouched'
+          % (['$%02X' % g for g in sorted(expect)],
+             ['$%02X' % g for g in sorted(only_excluded)] or 'nothing else'))
+    gt['do_undo']()
+    gt['set_all_cells'](1)
+    gt['refresh_cost']()
+    app.settle(1)
+
+
+def t_accept_source(app):
+    """AC7 — source is the quantised reference whatever view is displayed."""
+    import glyphio
+    import numpy as np
+    gt = app.gt
+    fe = gt['fe']
+    results = {}
+    for view in ('amiga_raw', 'oracle', 'amiga_quant'):
+        gt['set_ref'](view)
+        gt['select'](4, 0)
+        gt['set_all_cells'](1)
+        app.settle(1)
+        gt['accept_tile']()
+        app.settle(1)
+        results[view] = glyphio.sha256_bytes(glyphio.pack(fe.font))
+        gt['do_undo']()
+        app.settle(1)
+    check('A3-AC7 accept ignores the displayed view',
+          len(set(results.values())) == 1,
+          'raw/oracle/quantised all produce %s' % list(results.values())[0][:16])
+    gt['set_ref']('amiga_raw')
+
+    # ...and it really is the QUANTISED pixels, not the raw ones
+    import accept as ACC
+    m, refc = gt['mapping'], gt['ref']
+    q = ACC.quantised_cell(refc.qidx, 4, 0)
+    check('A3-AC7 the source pixels are palette indices 0-15',
+          q.shape == (8, 8) and int(q.max()) <= 15 and q.dtype == np.uint8,
+          'quantised cell is an index map, not RGB')
+
+
+def t_accept_provenance(app):
+    """AC6 — accepted is distinguishable from hand-drawn in the sidecar."""
+    import progress as PP
+    gt = app.gt
+    fe, prog = gt['fe'], gt['prog']
+    gt['select'](4, 0)
+    gt['set_all_cells'](1)
+    app.settle(1)
+    gt['accept_tile']()
+    app.settle(1)
+    g_acc = fe.history[-1][0]
+    d = prog.to_dict(fe, gt['cfg'].font, 'x' * 64, 'y' * 64)
+    check('A3-AC6 accepted glyphs are marked `accepted`',
+          d['state'][str(g_acc)] == PP.ACCEPTED and str(g_acc) in d['accepted'],
+          'glyph $%02X -> %s (%s)' % (g_acc, d['state'][str(g_acc)],
+                                      d['accepted'][str(g_acc)]))
+    check('A3-AC6 the sidecar counts them separately',
+          'accepted' in d['counts'] and d['counts']['accepted'] >= 1,
+          d['counts'])
+    # a hand stroke over an accepted glyph promotes it to `edited`
+    prog.note_edit(g_acc)
+    d2 = prog.to_dict(fe, gt['cfg'].font, 'x' * 64, 'y' * 64)
+    check('A3-AC6 drawing over an accept promotes it to `edited`',
+          d2['state'][str(g_acc)] == PP.EDITED,
+          'provenance follows the most recent authorship')
+    prog.last_edit.pop(g_acc, None)
+    gt['do_undo']()
+    app.settle(1)
+
+
+def t_accept_queue(app):
+    """AC8 — the cheap-first queue exists and is sorted by ascending radius."""
+    import accept as ACC
+    gt = app.gt
+    q = gt['qs'].get('cheap-accept')
+    check('A3-AC8 cheap-accept queue exists', bool(q) and len(q) == 256,
+          '%d tiles' % (len(q) if q else 0))
+    radius = ACC.blast_radius(gt['mapping'])
+    r = [radius[t] for t in q]
+    check('A3-AC8 sorted by ascending blast radius', r == sorted(r),
+          'first %s ... last %s' % (r[:4], r[-3:]))
+
+
 def main():
     try:
         import tkinter  # noqa: F401
@@ -484,7 +721,11 @@ def main():
                    t_no_selection_state, t_zoom_survives_selection,
                    t_compose_click, t_selected_cell_distinct, t_reselect_is_noop,
                    t_keyboard_traversal, t_reference_buttons, t_ui_state_persists,
-                   t_no_wheel_only, t_check_fits):
+                   t_no_wheel_only,
+                   t_accept_buttons, t_accept_cost, t_accept_conflict,
+                   t_accept_undo, t_accept_subset, t_accept_source,
+                   t_accept_provenance, t_accept_queue,
+                   t_check_fits):
             try:
                 fn(app)
             except Exception as ex:                            # noqa: BLE001

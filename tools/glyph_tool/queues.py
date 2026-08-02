@@ -61,14 +61,24 @@ def build(mapping):
 
     q['unverified'] = sorted(mapping.unverified)
     q['available'] = sorted(mapping.available)
+
+    # C6-A3: ascending blast radius. Accepting the quantised art for a tile whose
+    # glyphs are barely shared is nearly free; for one at the top of this list it
+    # rewrites most of the sheet. Working it from the front converts the cheap
+    # wins before touching anything contested.
+    import accept as A
+    radius = A.blast_radius(mapping)
+    q['cheap-accept'] = sorted(range(256), key=lambda t: (radius[t], t))
+
     q['all'] = list(range(256))
     return q
 
 
-ORDER = ('worst', 'cleanup', 'unverified', 'available', 'all')
+ORDER = ('worst', 'cheap-accept', 'cleanup', 'unverified', 'available', 'all')
 
 DESC = {
     'worst': 'worst RMS first (ladder.json worst_tiles_221), then the rest',
+    'cheap-accept': 'smallest blast radius first - accept is cheapest here (C6-A3)',
     'cleanup': 'lowest-confidence correspondence first (C1), then the rest',
     'unverified': 'real art, no static reference - draw normally (C6-A1)',
     'available': 'FREE SLOTS for new content - empty and editable',

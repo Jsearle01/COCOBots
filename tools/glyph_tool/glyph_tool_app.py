@@ -34,7 +34,9 @@ KEYS (all also available as on-screen controls)
   Tab / Shift-Tab step the tile's nine cells TL->BR
   , / .           previous / next palette index
   r               reference: raw Amiga -> quantised (the ceiling) -> C64 oracle
-  a               affected-tile strip (OFF by default - Jay: a strip
+  a / Shift-A     accept the QUANTISED art for this cell / this tile's ticked
+                  cells, as an authored edit (C6-A3)
+  s               affected-tile strip (OFF by default - Jay: a strip
                   "would make the screen busy")
   d               mark the current glyph done / not done
   arrows          move the selected cell within the tile
@@ -49,6 +51,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import accept as A                    # noqa: E402
 import config as C                    # noqa: E402
 import glyphio                        # noqa: E402
 import progress as P                  # noqa: E402
@@ -61,7 +64,8 @@ from tilemap import Mapping, PLANES   # noqa: E402
 
 ARM = '#FFE400'                       # armed-swatch highlight border (POP's convention)
 OK, STOP, INFO, IDLE = '#1b7f1b', '#b02020', '#666666', '#444444'
-STATE_BG = {P.UNTOUCHED: '#555555', P.EDITED: '#8a6d00', P.DONE: '#1b7f1b'}
+STATE_BG = {P.UNTOUCHED: '#555555', P.EDITED: '#8a6d00',
+            P.ACCEPTED: '#00647a', P.DONE: '#1b7f1b'}
 
 AVAIL_MARK = '#00ff88'        # available — a free slot, marked invitingly
 UNVERIFIED_MARK = '#ffaa00'   # no static reference — drawn normally
@@ -94,6 +98,9 @@ def main():
     ap.add_argument('--view', default=None, choices=S.Reference.VIEWS)
     ap.add_argument('--strip', action='store_true')
     ap.add_argument('--sheet-zoom', type=int, default=None)
+    ap.add_argument('--queue', default=None, choices=queues.ORDER)
+    ap.add_argument('--include', default=None,
+                    help='cells to tick for accept, e.g. 0,1,2 (evidence only)')
     ap.add_argument('--screenshot', default=None,
                     help='build the UI, grab the window to this PNG, and exit '
                          '(evidence for the report; changes nothing)')
@@ -199,7 +206,7 @@ def main():
     done_btn = tk.Button(selbar, text='mark done (d)', font=('Consolas', 9),
                          command=lambda: toggle_done())
     done_btn.pack(side='left', padx=(10, 0))
-    strip_btn = tk.Button(selbar, text='affected strip (a)', font=('Consolas', 9),
+    strip_btn = tk.Button(selbar, text='affected strip (s)', font=('Consolas', 9),
                           command=lambda: toggle_strip())
     strip_btn.pack(side='left', padx=(4, 0))
     qlabel = tk.Label(selbar, text='', font=('Consolas', 9), width=30, anchor='w')
@@ -256,6 +263,40 @@ def main():
                         height=24 * CELL_H * CMP_ZOOM,
                         bg='#282828', highlightthickness=0)
     ccanvas.pack(anchor='w')
+
+    # ---- C6-A3: accept the quantised reference as an authored edit ----------
+    # ONE full-width row above the strip, not a stack inside the left column.
+    # Stacked (buttons / checkboxes / multi-line cost) it added 142 px and took
+    # the window to 861 px against an 824 px budget — AC10 said verify rather
+    # than assume there was room, and there was not. Side by side it costs ~40.
+    acceptrow = tk.Frame(root)
+    tk.Label(acceptrow, text='accept from QUANTISED art:',
+             font=('Consolas', 9, 'bold'), fg='#00b8d4').pack(side='left', padx=(6, 4))
+    accept_cell_btn = tk.Button(acceptrow, text='accept cell (a)', font=('Consolas', 9),
+                                command=lambda: do_accept_cell())
+    accept_cell_btn.pack(side='left', padx=2)
+    accept_tile_btn = tk.Button(acceptrow, text='accept tile (9)  (Shift-A)',
+                                font=('Consolas', 9), command=lambda: do_accept_tile())
+    accept_tile_btn.pack(side='left', padx=2)
+
+    # Per-cell opt-out: accept six, hand-draw three. The dispatch is explicit
+    # that this must not be all-or-nothing.
+    tk.Label(acceptrow, text=' include:', font=('Consolas', 8)).pack(side='left')
+    cell_vars = []
+    for k in range(9):
+        v = tk.IntVar(value=1)
+        tk.Checkbutton(acceptrow, text=PLANES[k], variable=v, font=('Consolas', 8),
+                       padx=0, pady=0, command=lambda: refresh_cost()).pack(side='left')
+        cell_vars.append(v)
+    tk.Button(acceptrow, text='all', font=('Consolas', 8),
+              command=lambda: (set_all_cells(1), refresh_cost())).pack(side='left', padx=(4, 0))
+    tk.Button(acceptrow, text='none', font=('Consolas', 8),
+              command=lambda: (set_all_cells(0), refresh_cost())).pack(side='left')
+
+    # the cost, stated BEFORE the write — the numbers, not a reflex confirm box
+    costlabel = tk.Label(acceptrow, text='', font=('Consolas', 8), anchor='w',
+                         justify='left', fg='#ffcc66', wraplength=620)
+    costlabel.pack(side='left', padx=(10, 0))
 
     setlabel = tk.Label(left, text='', font=('Consolas', 9), anchor='w',
                         justify='left', wraplength=1040)
@@ -347,6 +388,7 @@ def main():
     savebar.pack(side='bottom', fill='x')
     palbar.pack(side='bottom', fill='x')
     striprow.pack(side='bottom', fill='x')
+    acceptrow.pack(side='bottom', fill='x')
 
     swatches = {}
 
@@ -559,7 +601,7 @@ def main():
         bad = []
         for name, w in (('sheet controls', sctl), ('reference row', rctl),
                         ('glyph controls', gctl), ('toolbar', bar),
-                        ('selector row', selbar)):
+                        ('selector row', selbar), ('accept row', acceptrow)):
             have, want = w.winfo_width(), w.winfo_reqwidth()
             if have > 1 and want > have:
                 bad.append('%s clipped (needs %dpx, has %d)' % (name, want, have))
@@ -577,6 +619,7 @@ def main():
         redraw_strip()
         if sheet_too:
             redraw_sheet()
+        refresh_cost()
         refresh_status()
         check_fits()
 
@@ -584,8 +627,8 @@ def main():
         g = glyph()
         ge = fe[g] if g is not None else None
         save_btn.config(state='normal' if fe.is_dirty() else 'disabled')
-        undo_btn.config(state='normal' if ge is not None and ge.can_undo() else 'disabled')
-        redo_btn.config(state='normal' if ge is not None and ge.can_redo() else 'disabled')
+        undo_btn.config(state='normal' if fe.can_undo() else 'disabled')
+        redo_btn.config(state='normal' if fe.can_redo() else 'disabled')
         revert_btn.config(state='normal' if ge is not None and ge.is_dirty() else 'disabled')
         undorevert_btn.config(state='normal' if ge is not None and ge.can_undo_revert()
                               else 'disabled')
@@ -604,6 +647,58 @@ def main():
                 st['qi'] = ql.index(st['tile'])
         assert (st['zoom'], st['sheet_zoom'], st['view']) == (z0, sz0, view0),             'selection changed a viewing preference'
         redraw()
+
+    # ---------------------------------------------- C6-A3: accept quantised --
+    def set_all_cells(v):
+        for var in cell_vars:
+            var.set(v)
+
+    def included_cells():
+        return [k for k in range(9) if cell_vars[k].get()]
+
+    def refresh_cost():
+        """Update the before-the-write cost display for whatever is currently
+        selected. Runs on every selection and checkbox change, so the numbers on
+        screen are always the numbers the button would act on."""
+        inc = included_cells()
+        p_tile = A.plan(ref.qidx, mapping, st['tile'], inc) if inc else None
+        p_cell = A.plan(ref.qidx, mapping, st['tile'], [st['cell']])
+        txt = A.cost_line(p_cell, mapping, st['tile'], [st['cell']])
+        if inc:
+            txt += '\n' + A.cost_line(p_tile, mapping, st['tile'], inc)
+        else:
+            txt += '\nno cells ticked — accept tile would write nothing'
+        costlabel.config(text=txt)
+        accept_tile_btn.config(state='normal' if inc else 'disabled')
+        g = glyph()
+        accept_cell_btn.config(state='disabled' if g is None else 'normal')
+
+    def _do_accept(cells, what):
+        p = A.plan(ref.qidx, mapping, st['tile'], cells)
+        if not p['changes']:
+            savebar.config(text=A.cost_line(p, mapping, st['tile'], cells),
+                           fg='white', bg=INFO)
+            return None
+        written = fe.apply_txn(p['changes'])          # ONE history entry
+        for g in written:
+            fe.note_edit(g)
+            prog.note_accept(g, st['tile'], PLANES[p['winners'][g]])
+        redraw()
+        savebar.config(text='%s — %s' % (what, A.outcome_line(p, mapping, st['tile'])),
+                       fg='white', bg=OK if not p['dropped'] else '#8a5a00')
+        schedule_autosave()
+        return p
+
+    def do_accept_cell(_=None):
+        _do_accept([st['cell']], 'accept cell')
+
+    def do_accept_tile(_=None):
+        inc = included_cells()
+        if not inc:
+            savebar.config(text='no cells ticked — nothing to accept',
+                           fg='white', bg=INFO)
+            return
+        _do_accept(inc, 'accept tile (%d cells)' % len(inc))
 
     def select_cell(k):
         """Select cell k of the CURRENT tile — the composed-tile route.
@@ -696,6 +791,7 @@ def main():
         if g is None:
             return
         fe[g].begin_stroke()
+        st['stroke_glyph'] = g
         st['painting'] = True
         on_drag(e)
 
@@ -724,6 +820,11 @@ def main():
         if not st['painting']:
             return
         st['painting'] = False
+        g = st.pop('stroke_glyph', None)
+        # record only if the stroke actually changed pixels — a click that lands
+        # on the colour already there must not leave a no-op undo entry
+        if g is not None and fe[g].undo and not np.array_equal(fe[g].px, fe[g].undo[-1]):
+            fe.record([g])          # same history as an accept, so undo is ordered
         redraw(sheet_too=False)
         schedule_autosave()
 
@@ -744,14 +845,21 @@ def main():
 
     # ----------------------------------------------------------- operations --
     def do_undo(_=None):
-        g = glyph()
-        if g is not None and fe[g].undo_stroke():
-            redraw(sheet_too=False)
+        # ONE history across all glyphs (C6-A3): undoing an accept that wrote
+        # five glyphs puts all five back, in one step.
+        gs = fe.undo()
+        if gs:
+            prog.forget_accept(gs)      # the sidecar must not outlive the pixels
+            redraw()
+            savebar.config(text='undo — %d glyph%s reverted (%s)'
+                                % (len(gs), '' if len(gs) == 1 else 's',
+                                   ' '.join('$%02X' % g for g in gs[:8])),
+                           fg='white', bg=INFO)
 
     def do_redo(_=None):
-        g = glyph()
-        if g is not None and fe[g].redo_stroke():
-            redraw(sheet_too=False)
+        gs = fe.redo()
+        if gs:
+            redraw()
 
     def do_revert(_=None):
         g = glyph()
@@ -955,7 +1063,9 @@ def main():
     root.bind('<Tab>', lambda _e: (step_cell(+1), 'break')[1])
     root.bind('<Shift-Tab>', lambda _e: (step_cell(-1), 'break')[1])
     root.bind('<ISO_Left_Tab>', lambda _e: (step_cell(-1), 'break')[1])
-    root.bind('a', toggle_strip)
+    root.bind('a', do_accept_cell)
+    root.bind('A', do_accept_tile)
+    root.bind('s', toggle_strip)
     root.bind('d', toggle_done)
     root.bind('n', lambda _e: step_queue(+1))
     root.bind('p', lambda _e: step_queue(-1))
@@ -985,10 +1095,18 @@ def main():
         st['strip'] = True
     if args.sheet_zoom:
         st['sheet_zoom'] = args.sheet_zoom
+    if args.queue:
+        qvar.set(args.queue)
+        set_queue(args.queue)
     if args.tile is not None:
         select(args.tile, args.cell)
-    else:
+    elif not args.queue:
         set_queue(st['queue'])
+    if args.include is not None:
+        set_all_cells(0)
+        for k in (int(x) for x in args.include.split(',') if x.strip() != ''):
+            cell_vars[k].set(1)
+        refresh_cost()
     root.update_idletasks()
     centre_on_selected()          # start looking at the tile we are working on
     savebar.config(text='loaded %s (%d glyphs, %d used by tiles) — sha256 %s'
@@ -1001,6 +1119,10 @@ def main():
     # two defects were both "the code is fine, the user cannot reach it", and
     # only a driven event can tell those apart from a unit call.
     root.gt = dict(st=st, select=select, select_cell=select_cell,
+                   accept_cell=do_accept_cell, accept_tile=do_accept_tile,
+                   cell_vars=cell_vars, refresh_cost=refresh_cost,
+                   included_cells=included_cells, set_all_cells=set_all_cells,
+                   ref=ref, do_undo=do_undo, do_redo=do_redo, qs=qs,
                    compose_hit=compose_hit, step_cell=step_cell,
                    zoom=zoom, sheet_zoom=sheet_zoom, sheet_zoom_fit=sheet_zoom_fit,
                    glyph_zoom_fit=glyph_zoom_fit, centre_on_selected=centre_on_selected,
