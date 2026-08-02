@@ -27,7 +27,8 @@ glyph is also somewhere else" on both panels.
 against `assets/palette.json`. Scattering them across two files is how a marker sat at distance 0.0
 for four dispatches. `uitest.py` asserts the sweep is clean and that no drawing call bypasses it.
 
-`uitest.py` **75 checks**, `selftest.py` **58 checks**, both 0 failed.
+`uitest.py` **75 checks**, `selftest.py` **58 checks**, both 0 failed — with one
+unreproducible red run recorded in §7 flag 7.
 
 **Separately: Jay has been using the tool, and it produced work I nearly tripped over.** §6.
 
@@ -127,7 +128,8 @@ max 122 — those are the **shipped** mapping. The tool loads **a192**, where it
 / mean 7 / max 95**. So the sheet is far less densely outlined in practice than §3's "a third to a
 half of the sheet" — the median selection lights **4** tiles, not 88. The 1 px choice still stands.
 
-**AC6 —** `uitest.py` **75 checks, 0 failed**; `selftest.py` **58 checks, 0 failed**.
+**AC6 —** `uitest.py` **75 checks, 0 failed** (ten consecutive runs; one earlier run reported
+74/2 and is flagged in §7 item 7); `selftest.py` **58 checks, 0 failed**.
 
 **AC7 — no regression.** Round-trip still
 `b034d241e17640e89bca1785f934e7a2bc8a3b5f1e16f33c451946658e98621c`; `git diff HEAD` over the 13
@@ -191,12 +193,22 @@ right reason: the tool was being used.**
    comfortably either side. Nothing derives it from perception.
 6. **Euclidean RGB distance is a crude perceptual metric.** A proper ΔE would be better; RGB
    distance is what makes the "IS palette `$34`" cases obvious, which is the failure that mattered.
-7. **I have not judged the tool's output appearance** and this report contains no such judgement —
+7. **One `uitest.py` run reported `74 checks, 2 failed` and I could not reproduce it.** It happened
+   in the same shell invocation as a `git add`/`commit`/`push`, and Jay's session was live around
+   the same window. **Ten consecutive runs since are `75 checks, 0 failed`.** 74 rather than 75 means
+   a test raised and its exception handler replaced several checks with one, so it was an exception
+   rather than an assertion — but **I did not capture the names before it cleared, so I cannot say
+   which.** Most likely the font or sidecar changing mid-run under a concurrent save. **Recording it
+   because ten green runs do not make one red run untrue**, and if it recurs the fix is probably for
+   `uitest.py` to snapshot the font at start rather than read the live file.
+8. **I have not judged the tool's output appearance** and this report contains no such judgement —
    including whether magenta reads well, which is Jay's call.
 
 ### 8 — Follow-up candidates
 
 - **Widen the sibling outline to 2 px** if 1 px does not read at 1× (flag 1).
+- **Make `uitest.py` snapshot the font at start** rather than reading the live authored file,
+  so a concurrent save cannot perturb a run (flag 7).
 - **Re-emit `art/coco-engine.png`** — Jay's session has moved the font, so the tracked snapshot is
   now stale (C6-A4 §7 flag 3). The in-tool view is unaffected.
 - **Carried, unchanged:** which palette variant, and whether the allocator should reserve the 15 text
