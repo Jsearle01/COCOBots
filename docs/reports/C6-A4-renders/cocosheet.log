@@ -1,0 +1,3 @@
+palette from assets/palette.json: $00 $3F $10 $09 $07 $38 $22 $0B $30 $26 $37 $12 $34 $20 $03 $0E
+coco-quantised  384x384  distinct 8x8 cells  1799  -> per-pixel quantisation   off-palette px 0  sha256 0bec0a6ee73ae7585176aa4f0ac40ffb
+coco-engine     384x384  distinct 8x8 cells   143  -> engine render            off-palette px 0  sha256 ff03e21d442d88902927f26692973491
