@@ -362,9 +362,11 @@ def t_keyboard_traversal(app):
 def t_reference_buttons(app):
     st, gt = app.gt['st'], app.gt
     bs = buttons(app.root)
-    names = ['raw', 'quantised', 'C64 oracle']
-    check('AC8 three reference buttons exist',
-          all(n in bs for n in names), [n for n in names if n not in bs])
+    # C6-A4: four states now — a CoCo engine render joined the three
+    names = ['raw', 'CoCo px', 'CoCo engine', 'C64']
+    check('AC8 four reference buttons exist',
+          all(n in bs for n in names) and len(names) == len(S.Reference.VIEWS),
+          [n for n in names if n not in bs])
     for n, v in zip(names, S.Reference.VIEWS):
         bs[n][0].invoke()
         app.settle()
@@ -372,7 +374,7 @@ def t_reference_buttons(app):
             check('AC8 button "%s" selects %s' % (n, v), False, st['view'])
             return
     check('AC8 every reference view reachable by click alone', True,
-          'raw -> quantised -> oracle, all three')
+          ' -> '.join(S.Reference.VIEWS))
 
     # the CURRENT view must be spelled out on screen for whichever view is
     # active — three near-identical images with no label is its own trap
@@ -710,6 +712,125 @@ def t_accept_queue(app):
           'first %s ... last %s' % (r[:4], r[-3:]))
 
 
+# ------------------------------------------------------------- C6-A4 -------
+def t_coco_sheets(app):
+    """AC1/AC2/AC3 — the sheets exist at 384x384, are classified by measurement,
+    and hold nothing but the adopted 16."""
+    import cocosheet as CS
+    import glyphio
+    import numpy as np
+    from PIL import Image
+    gt = app.gt
+    pal = gt['ref'].pal_rgb
+
+    for name, expect in (('coco-quantised', 'per-pixel quantisation'),
+                         ('coco-engine', 'engine render')):
+        path = os.path.join(C.REPO, 'art', '%s.png' % name)
+        check('A4-AC1 %s exists at 384x384' % name, os.path.exists(path)
+              and Image.open(path).size == (384, 384),
+              '%s  sha256 %s' % (Image.open(path).size if os.path.exists(path) else '-',
+                                 glyphio.sha256_file(path)[:32] if os.path.exists(path) else '-'))
+        rgb = np.asarray(Image.open(path).convert('RGB'))
+        n = CS.distinct_cells(rgb)
+        check('A4-AC2 %s classified by measurement' % name,
+              CS.classify(n) == expect,
+              '%d distinct 8x8 cells -> %s' % (n, CS.classify(n)))
+        check('A4-AC3 %s is palette-legal' % name,
+              CS.off_palette(rgb, pal) == 0,
+              '%d off-palette pixels' % CS.off_palette(rgb, pal))
+
+    # the palette really came from the FILE, not a quote in a dispatch
+    import json
+    with open(C.PALETTE_JSON, encoding='utf-8') as f:
+        want = [s['rgb'] for s in json.load(f)['slots']]
+    check('A4-AC1 palette is the one in assets/palette.json',
+          np.array_equal(pal, np.array(want, dtype=np.uint8)),
+          ' '.join('$%02X' % b for b in gt.get('pal_bytes', [])) or 'matches file')
+
+
+def t_coco_alignment(app):
+    """AC5 — sheet tile n corresponds to tileset tile n, checked against a
+    landmark rather than asserted."""
+    import numpy as np
+    from PIL import Image
+    import render as R
+    import sheet as SS
+    gt = app.gt
+    m, fe = gt['mapping'], gt['fe']
+    pal = gt['ref'].pal_rgb
+    eng = np.asarray(Image.open(os.path.join(C.REPO, 'art', 'coco-engine.png'))
+                     .convert('RGB'))
+
+    # landmark 1: every tile must agree with the editor's own composed-tile path,
+    # which is an independent code path over the same mapping
+    bad = []
+    for t in range(256):
+        idx, nod = R.compose_tile(fe.font, m, t)
+        want = pal[idx]
+        x, y, w, h = SS.tile_rect(t)
+        got = eng[y:y + h, x:x + w]
+        if not np.array_equal(got[~nod], want[~nod]):
+            bad.append(t)
+    check('A4-AC5 engine sheet agrees with compose_tile on all 256 tiles',
+          not bad, str(bad[:5]) or 'independent path, same result')
+
+    # landmark 2: a tile whose nine cells all use the SAME glyph must render as
+    # that 8x8 tiled exactly 3x3. Offset the sheet by a single pixel and the
+    # repetition breaks, so this pins the origin and the pitch together.
+    #
+    # NOT the flat-colour test I reached for first: C6-A1's `available` tiles are
+    # blank in the SHIPPED table, but a192's allocator remapped those cells onto
+    # a glyph whose pixels come from k-means over the art and need not be
+    # uniform. Uniform in GLYPH, not in colour — the test has to say which.
+    uniform = [t for t in range(256) if len(m.tile_glyph_set(t)) == 1
+               and all(c is not None for c in m.glyphs[t])]
+    bad2 = []
+    for t in uniform:
+        x, y, w, h = SS.tile_rect(t)
+        block = eng[y:y + 8, x:x + 8]
+        if not np.array_equal(eng[y:y + h, x:x + w], np.tile(block, (3, 3, 1))):
+            bad2.append(t)
+    check('A4-AC5 single-glyph tiles repeat exactly 3x3 at their own index',
+          uniform and not bad2,
+          '%d such tiles (e.g. %s), %d misaligned'
+          % (len(uniform), sorted(uniform)[:4], len(bad2)))
+
+
+def t_coco_accept_source(app):
+    """AC6 — the engine render must NOT have become the accept source, and
+    accept stays invariant across all FOUR views."""
+    import glyphio
+    gt = app.gt
+    fe = gt['fe']
+    out = {}
+    for view in S.Reference.VIEWS:
+        gt['set_ref'](view)
+        gt['select'](4, 0)
+        gt['set_all_cells'](1)
+        app.settle(1)
+        gt['accept_tile']()
+        app.settle(1)
+        out[view] = glyphio.sha256_bytes(glyphio.pack(fe.font))
+        gt['do_undo']()
+        app.settle(1)
+    check('A4-AC6 accept is invariant across all four views',
+          len(set(out.values())) == 1,
+          '%d views -> %s' % (len(out), list(out.values())[0][:16]))
+
+    # ...and it is the PER-PIXEL source, not the engine one. Accepting from the
+    # engine render would write a glyph its own current pixels — a no-op.
+    import accept as ACC
+    import numpy as np
+    p = ACC.plan(gt['ref'].qidx, gt['mapping'], 4, range(9))
+    same = [g for g, px in p['changes'].items() if np.array_equal(fe.font[g], px)]
+    check('A4-AC6 accept source is per-pixel, not the engine render',
+          len(same) < len(p['changes']),
+          '%d of %d glyphs would actually change — an engine source would change 0'
+          % (len(p['changes']) - len(same), len(p['changes'])))
+    gt['set_ref']('amiga_raw')
+    app.settle(1)
+
+
 def main():
     try:
         import tkinter  # noqa: F401
@@ -725,6 +846,7 @@ def main():
                    t_accept_buttons, t_accept_cost, t_accept_conflict,
                    t_accept_undo, t_accept_subset, t_accept_source,
                    t_accept_provenance, t_accept_queue,
+                   t_coco_sheets, t_coco_alignment, t_coco_accept_source,
                    t_check_fits):
             try:
                 fn(app)

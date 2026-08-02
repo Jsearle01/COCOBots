@@ -33,7 +33,8 @@ KEYS (all also available as on-screen controls)
                                                SELECTED TILE, keeping it centred)
   Tab / Shift-Tab step the tile's nine cells TL->BR
   , / .           previous / next palette index
-  r               reference: raw Amiga -> quantised (the ceiling) -> C64 oracle
+  r               reference, four states: raw Amiga -> CoCo per-pixel (the
+                  ceiling) -> CoCo engine (reachable, live) -> C64 oracle
   a / Shift-A     accept the QUANTISED art for this cell / this tile's ticked
                   cells, as an authored edit (C6-A3)
   s               affected-tile strip (OFF by default - Jay: a strip
@@ -256,8 +257,8 @@ def main():
 
     colb = tk.Frame(lrow)
     colb.pack(side='left', anchor='n', padx=(14, 0))
-    cmp_label = tk.Label(colb, text='', fg='#bbbbbb', font=('Consolas', 10, 'bold'),
-                         anchor='w', justify='left')
+    cmp_label = tk.Label(colb, text='', fg='#bbbbbb', font=('Consolas', 9, 'bold'),
+                         anchor='w', justify='left', wraplength=760)
     cmp_label.pack(anchor='w')
     ccanvas = tk.Canvas(colb, width=24 * CELL_W * CMP_ZOOM * 2 + CMP_GAP,
                         height=24 * CELL_H * CMP_ZOOM,
@@ -305,8 +306,8 @@ def main():
     # ---- RIGHT: the sheet ----------------------------------------------------
     right = tk.Frame(body)
     right.pack(side='left', fill='both', expand=True, padx=6, pady=4)
-    reflabel = tk.Label(right, text='', fg='#bbbbbb', font=('Consolas', 10, 'bold'),
-                        anchor='w')
+    reflabel = tk.Label(right, text='', fg='#bbbbbb', font=('Consolas', 9, 'bold'),
+                        anchor='w', justify='left', wraplength=420)
     reflabel.pack(anchor='w')
 
     # ---- sheet controls. EVERY capability here has a visible, clickable
@@ -343,8 +344,8 @@ def main():
     rctl.pack(anchor='w', fill='x', pady=(0, 2))
     tk.Label(rctl, text='reference:', font=('Consolas', 9)).pack(side='left')
     ref_btns = {}
-    REF_LABEL = {'amiga_raw': 'raw', 'amiga_quant': 'quantised',
-                 'oracle': 'C64 oracle'}
+    REF_LABEL = {'amiga_raw': 'raw', 'amiga_quant': 'CoCo px',
+                 'coco_engine': 'CoCo engine', 'oracle': 'C64'}
     for v in S.Reference.VIEWS:
         b = tk.Button(rctl, text=REF_LABEL[v], font=('Consolas', 9),
                       command=lambda vv=v: set_ref(vv))
@@ -413,6 +414,8 @@ def main():
 
     # ------------------------------------------------------------- rendering --
     def sheet_photo():
+        if st['view'] == 'coco_engine' and ref.refresh_engine(fe.font, mapping):
+            st['sheet_cache'] = (None, None)     # live render moved; drop the cache
         key = (st['view'], st['sheet_zoom'])
         if st['sheet_cache'][0] != key:
             img = R.sheet_image(ref.image(st['view']), st['sheet_zoom'])
@@ -617,7 +620,7 @@ def main():
         redraw_glyph()
         redraw_compare()
         redraw_strip()
-        if sheet_too:
+        if sheet_too or st['view'] == 'coco_engine':
             redraw_sheet()
         refresh_cost()
         refresh_status()
@@ -674,6 +677,11 @@ def main():
         accept_cell_btn.config(state='disabled' if g is None else 'normal')
 
     def _do_accept(cells, what):
+        # `ref.qidx` is the PER-PIXEL quantisation, and stays the source whatever
+        # view is displayed (C6-A3 AC7). C6-A4 deliberately did NOT move it to
+        # the new engine view: that render is the glyph model's own output, so
+        # accepting it would write back the merged art hand-editing exists to
+        # replace (C6-A4 §3).
         p = A.plan(ref.qidx, mapping, st['tile'], cells)
         if not p['changes']:
             savebar.config(text=A.cost_line(p, mapping, st['tile'], cells),
