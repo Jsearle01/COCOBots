@@ -1,0 +1,16 @@
+decoration         colour    drawn over      distance  nearest palette    verdict
+SIBLING_OUTLINE    #FF00FF   sheet              208.2  $38 Light grey     OK
+CELL_SIBLING       #FF00FF   composed tile      208.2  $38 Light grey     OK
+CHANGED_PIXEL      #00FFC0   glyph canvas       181.3  $0B Light blue     OK
+UNVERIFIED_MARK    #00FFFF   sheet              170.0  $0B Light blue     OK
+NODATA_FILL        #FF0080   composed tile      153.7  $26 Orange         OK
+AVAILABLE_MARK     #00FF88   sheet              136.0  $12 Light green    OK
+CELL_EDIT_TICK     #00FF88   composed tile      136.0  $12 Light green    OK
+GLYPH_GRID         #464646   glyph canvas        26.0  $07 Dark grey      EXCEPTION
+MARK_LIGHT         #FFFFFF   both (two-tone)      0.0  $3F White          EXCEPTION
+MARK_DARK          #000000   both (two-tone)      0.0  $00 Black          EXCEPTION
+
+threshold 100 units. 0 collision(s), 3 argued exception(s).
+  GLYPH_GRID: A neutral 1px lattice cannot satisfy the rule: every grey is within ~75 units of one of the palette greys {0,85,170,255}, so no neutral passes.
+  MARK_LIGHT: White IS palette $3F.
+  MARK_DARK: Black IS palette $00, and is never drawn alone either.

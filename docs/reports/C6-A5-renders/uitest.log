@@ -1,0 +1,77 @@
+PASS AC1 minus button exists                      2 found (sheet + glyph)
+PASS AC1 plus button exists                       2 found
+PASS AC1 fit button exists                        2 found
+PASS AC1 clicking + zooms both panels             sheet 1->2  glyph 8->9
+PASS AC1 clicking - zooms out                     sheet 1  glyph 8
+PASS AC1 fit buttons work                         glyph 8x  sheet 1x
+PASS AC1 zoom readout visible                     ['8x', '1x']
+PASS AC1 sheet-zoom key works with focus elsewhere focus on .!frame.!button; [ ] still reached the toplevel  1->2
+PASS AC3 selected tile still in view at 5x        tile 250 centre (1260,1860) in viewport x[1078..1443] y[1564..1920]
+PASS AC3 and centred as far as the scroll range allows view at (1078,1564), clamped ideal (1078,1564), error 0 px
+PASS AC3 a mid-sheet tile is centred outright     tile 136 off-centre by 0 px (tolerance 120)
+PASS AC3 a tile is always selected                tile=136 cell=0 — st is seeded with 0 and select() clamps to 0..255, so no unselected state exists
+PASS AC3 out-of-range selection clamps, no crash  select(-5) then select(999) -> 255
+PASS AC3b selection does not reset zoom           after 5 selections: sheet 7x glyph 8x view coco_engine
+PASS AC4 all 9 cells resolve in both panels       []
+PASS AC4 cell boundaries                          []
+PASS AC4 outside the tiles is None                gutter and below
+PASS AC4 a real click selects that cell           clicked BM -> cell 7
+PASS AC5 edited cell has its own mark             tile $00: 304 edit-tick px, 3927 sibling px, 800 cursor px
+PASS AC6 setup: a stroke is live                  tile $00 glyph $35 in cells (0, 1)
+PASS AC6 re-selecting the same glyph is a no-op   undo depth 1 kept, still dirty, glyph still $35
+PASS AC6 selecting the SAME cell returns False    no redraw, no state change
+PASS AC7 Tab traverses all nine cells TL->BR      [0, 1, 2, 3, 4, 5, 6, 7, 8]
+PASS AC7 Shift-Tab walks back                     cell 0
+PASS AC8 four reference buttons exist             []
+PASS AC8 every reference view reachable by click alone amiga_raw -> amiga_quant -> coco_engine -> oracle
+PASS AC8 the ACTIVE view is named on screen       []
+PASS AC8 view is written to the sidecar           {'view': 'amiga_quant', 'zoom': 11, 'sheet_zoom': 3, 'tile': 42, 'cell': 5, 'queue': 'worst'}
+PASS AC2 wheel bindings enumerated                ['sheet<Shift-MouseWheel>', 'sheet<MouseWheel>']
+PASS AC2 every wheel binding is pan, and scrollbars duplicate it 2 wheel bindings (all pan), 2 scrollbars
+PASS A3-AC1 accept buttons exist and name their key []
+PASS A3-AC1 the source is named beside them       accept from QUANTISED art:
+PASS A3-AC2 cost for tile 4                       5 distinct glyphs -> 87 tiles; 2 conflicting
+PASS A3-AC2 cost for tile 136                     6 distinct glyphs -> 144 tiles; 3 conflicting
+PASS A3-AC2 cost tracks the tick boxes            nine cells vs one produce different costs
+PASS A3-AC3 a tile with DIFFERING conflicting art exists tile $02, 2 glyph(s) written from >1 cell with different art: $3A x5, $3B x4
+PASS A3-AC3 first cell in TL->BR order wins       []
+PASS A3-AC3 dropped cells are recorded            2 glyphs with dropped cells
+PASS A3-AC3 conflict stated BEFORE and AFTER the write before: names them; after: names what was dropped
+PASS A3-AC5 accept changed the font               22c87975d473 -> 89a4393c19d2
+PASS A3-AC5 accept is exactly ONE history entry   5 glyphs written in 1 entry
+PASS A3-AC5 one undo restores byte-identically    22c87975d473 == 22c87975d473
+PASS A3-AC5 undo cleared the accepted provenance  the 5 glyphs this accept wrote are no longer claimed
+PASS A3-AC4 included_cells reflects the boxes     [0, 1, 2]
+PASS A3-AC4 only the ticked cells were written    wrote ['$0E', '$3C']; left ['$24', '$40', '$8E'] untouched
+PASS A3-AC7 accept ignores the displayed view     raw/oracle/quantised all produce 89a4393c19d28098
+PASS A3-AC7 the source pixels are palette indices 0-15 quantised cell is an index map, not RGB
+PASS A3-AC6 accepted glyphs are marked `accepted` glyph $0E -> accepted (2026-08-01T23:14:25 tile $04 TM)
+PASS A3-AC6 the sidecar counts them separately    {'untouched': 176, 'edited': 3, 'accepted': 13, 'done': 0}
+PASS A3-AC6 drawing over an accept promotes it to `edited` provenance follows the most recent authorship
+PASS A3-AC8 cheap-accept queue exists             256 tiles
+PASS A3-AC8 sorted by ascending blast radius      first [1, 4, 5, 5] ... last [154, 167, 171]
+PASS A4-AC1 coco-quantised exists at 384x384      (384, 384)  sha256 0bec0a6ee73ae7585176aa4f0ac40ffb
+PASS A4-AC2 coco-quantised classified by measurement 1799 distinct 8x8 cells -> per-pixel quantisation
+PASS A4-AC3 coco-quantised is palette-legal       0 off-palette pixels
+PASS A4-AC1 coco-engine exists at 384x384         (384, 384)  sha256 ff03e21d442d88902927f26692973491
+PASS A4-AC2 coco-engine classified by measurement 143 distinct 8x8 cells -> engine render
+PASS A4-AC3 coco-engine is palette-legal          0 off-palette pixels
+PASS A4-AC1 palette is the one in assets/palette.json matches file
+PASS A4-AC5 engine sheet agrees with compose_tile on all 256 tiles []
+PASS A4-AC5 single-glyph tiles repeat exactly 3x3 at their own index 14 such tiles (e.g. [0, 1, 9, 14]), 0 misaligned
+PASS A4-AC6 accept is invariant across all four views 4 views -> 89a4393c19d28098
+PASS A4-AC6 accept source is per-pixel, not the engine render 5 of 5 glyphs would actually change — an engine source would change 0
+PASS A5-AC4 no decoration collides with the palette []
+PASS A5-AC3 sibling outline is magenta and NOT from the palette #FF00FF, 208.2 units from the nearest palette colour
+PASS A5-AC4 each exception carries a reason       GLYPH_GRID, MARK_DARK, MARK_LIGHT
+PASS A5-AC2 the neutral marker is two-tone        #FFFFFF beside #000000 — no flat colour hides both
+PASS A5-AC4 no colour literal bypasses decor.py   []
+PASS A5-AC5 sibling sets unchanged by the colour change []
+PASS A5-AC5 outline set $3A recounts              108 tiles
+PASS A5-AC5 outline set $4D recounts              122 tiles
+PASS A5-AC5 sibling-count profile reported        a192: min 1 median 4 mean 7 max 95
+PASS check_fits passes at every SHEET zoom        []
+PASS glyph zoom self-limits before clipping       held at 8x (ceiling offered: 24x) on a 864px screen; layout still fits
+PASS glyph zoom returns to the default cleanly    
+
+75 checks, 0 failed
