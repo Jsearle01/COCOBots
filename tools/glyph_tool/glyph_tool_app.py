@@ -15,14 +15,25 @@ prominent save banner that only a save writes, a status line, action buttons tha
 gray themselves when their action is invalid, Ctrl-Z / Ctrl-Y / Ctrl-S, +/- zoom,
 mouse-wheel pan. Nothing here reinvents a convention that tool already settled.
 
-KEYS
+NO CAPABILITY IS KEYBOARD-ONLY (C6-A2). Jay has no scroll wheel, and two-finger
+gestures on his machine produce scroll/pan, never zoom — so a control reachable
+only by wheel, gesture, or an unlabelled key does not exist for him. Both zooms,
+the reference view, the strip, done-marking and queue stepping all have visible
+on-screen buttons. Keys still work and are printed beside their buttons, but they
+are never the only route to anything.
+
+KEYS (all also available as on-screen controls)
   click sheet     load the tile+cell under the cursor (sub-cell)
+  click tile      select that cell of the CURRENT tile - either the composed
+                  24x24 or the reference beside it
   paint / drag    set the armed palette index
   right-click     eyedropper - arm the index under the cursor
   Ctrl-Z / Ctrl-Y undo / redo          Ctrl-S  save
-  + / -           glyph zoom           [ / ]   sheet zoom
+  + / -           glyph zoom           [ / ]   sheet zoom (anchors on the
+                                               SELECTED TILE, keeping it centred)
+  Tab / Shift-Tab step the tile's nine cells TL->BR
   , / .           previous / next palette index
-  r               reference: raw Amiga -> quantised -> C64 oracle
+  r               reference: raw Amiga -> quantised (the ceiling) -> C64 oracle
   a               affected-tile strip (OFF by default - Jay: a strip
                   "would make the screen busy")
   d               mark the current glyph done / not done
@@ -65,6 +76,7 @@ CLS_BG = {'available': '#0b6b3a', 'referenced': '#3a3a3a',
 # third zoom control buys nothing and 3x is what makes 24x24 at 5:6 (360x432)
 # sit beside the glyph canvas without either one clipping.
 CMP_ZOOM = 3
+CMP_GAP = 40                 # gutter between the composed tile and the reference
 STRIP_ZOOM = 1
 STRIP_PER_ROW = 32          # 122 tiles -> 4 rows, not 8
 STRIP_W = STRIP_PER_ROW * (24 * STRIP_ZOOM + 2)
@@ -128,6 +140,10 @@ def main():
     st = {'zoom': 8, 'sheet_zoom': 1, 'colour': 1, 'tile': 0, 'cell': 0,
           'view': 'amiga_raw', 'strip': False, 'painting': False,
           'queue': 'worst', 'qi': 0, 'imgs': {}, 'sheet_cache': (None, None)}
+    # C6-A2 AC8: the reference view persists across tile selection AND across
+    # sessions, alongside the other progress state. Zooms ride along for the same
+    # reason — they are viewing preferences, not per-tile facts.
+    st.update({k: v for k, v in prog.ui.items() if k in st})
 
     def glyph():
         return mapping.glyphs[st['tile']][st['cell']]
@@ -140,8 +156,8 @@ def main():
 
     # FIXED width monospace so a changing readout never resizes the label and
     # shoves the button cluster off the right edge (POP's sprite tool bug).
-    coord = tk.Label(bar, text='move over a pixel...', font=('Consolas', 10),
-                     width=52, anchor='w')
+    coord = tk.Label(bar, text='move over a pixel...   right-click = eyedropper',
+                     font=('Consolas', 10), width=52, anchor='w')
     coord.pack(side='left', padx=6)
 
     save_btn = tk.Button(bar, text='SAVE', command=lambda: do_save())
@@ -154,10 +170,17 @@ def main():
     revert_btn.pack(side='right', padx=(8, 0))
     undorevert_btn.pack(side='right')
     save_btn.pack(side='right', padx=6)
-    tk.Button(bar, text='+', command=lambda: zoom(+1)).pack(side='right')
-    tk.Button(bar, text='-', command=lambda: zoom(-1)).pack(side='right')
+    # (glyph and sheet zoom live in labelled clusters on their own panels — two
+    # bare +/- buttons up here next to SAVE said nothing about WHAT they zoomed,
+    # which is half of why the sheet zoom was never found.)
 
-    header = tk.Label(selbar, text='', font=('Consolas', 11, 'bold'), anchor='w')
+    # FIXED width, same reason as `coord`: this label's text grows with the
+    # glyph's tile count and its warnings, and a variable-width label in a packed
+    # row pushes whatever is to its right off the edge. C6 carried this
+    # convention over from POP's sprite tool and then applied it to only one of
+    # the two readouts — which is how two new buttons clipped the row.
+    header = tk.Label(selbar, text='', font=('Consolas', 11, 'bold'),
+                      width=58, anchor='w')
     header.pack(side='left', padx=6)
     statechip = tk.Label(selbar, text='', font=('Consolas', 9, 'bold'),
                          fg='white', bg=STATE_BG[P.UNTOUCHED], padx=6)
@@ -171,7 +194,15 @@ def main():
     qmenu.pack(side='left')
     tk.Button(selbar, text='|<', width=3, command=lambda: step_queue(-1)).pack(side='left')
     tk.Button(selbar, text='>|', width=3, command=lambda: step_queue(+1)).pack(side='left')
-    qlabel = tk.Label(selbar, text='', font=('Consolas', 9), width=44, anchor='w')
+    # AC8b sweep: these two were reachable only by an unlabelled key, which is
+    # exactly the failure that hid the sheet zoom and the quantised reference.
+    done_btn = tk.Button(selbar, text='mark done (d)', font=('Consolas', 9),
+                         command=lambda: toggle_done())
+    done_btn.pack(side='left', padx=(10, 0))
+    strip_btn = tk.Button(selbar, text='affected strip (a)', font=('Consolas', 9),
+                          command=lambda: toggle_strip())
+    strip_btn.pack(side='left', padx=(4, 0))
+    qlabel = tk.Label(selbar, text='', font=('Consolas', 9), width=30, anchor='w')
     qlabel.pack(side='left', padx=6)
 
     # The tile's classification, always visible and colour-coded. It carries the
@@ -199,6 +230,19 @@ def main():
     cola.pack(side='left', anchor='n')
     tk.Label(cola, text='GLYPH — paint here (yellow = changed)',
              fg='#ffe400', font=('Consolas', 10, 'bold')).pack(anchor='w')
+    gctl = tk.Frame(cola)
+    gctl.pack(anchor='w', pady=(0, 2))
+    tk.Label(gctl, text='zoom', font=('Consolas', 9)).pack(side='left')
+    tk.Button(gctl, text='−', width=2, font=('Consolas', 10, 'bold'),
+              command=lambda: zoom(-1)).pack(side='left', padx=(4, 0))
+    glyph_zoom_lbl = tk.Label(gctl, text='', font=('Consolas', 10, 'bold'),
+                              width=6, relief='sunken', anchor='center')
+    glyph_zoom_lbl.pack(side='left', padx=2)
+    tk.Button(gctl, text='+', width=2, font=('Consolas', 10, 'bold'),
+              command=lambda: zoom(+1)).pack(side='left')
+    tk.Button(gctl, text='fit', width=4,
+              command=lambda: glyph_zoom_fit()).pack(side='left', padx=(4, 0))
+    tk.Label(gctl, text='+ -', font=('Consolas', 8), fg='#888').pack(side='left', padx=2)
     gcanvas = tk.Canvas(cola, width=8 * CELL_W * 8, height=8 * CELL_H * 8,
                         bg='#282828', highlightthickness=0)
     gcanvas.pack(anchor='w')
@@ -208,7 +252,7 @@ def main():
     cmp_label = tk.Label(colb, text='', fg='#bbbbbb', font=('Consolas', 10, 'bold'),
                          anchor='w', justify='left')
     cmp_label.pack(anchor='w')
-    ccanvas = tk.Canvas(colb, width=24 * CELL_W * CMP_ZOOM * 2 + 40,
+    ccanvas = tk.Canvas(colb, width=24 * CELL_W * CMP_ZOOM * 2 + CMP_GAP,
                         height=24 * CELL_H * CMP_ZOOM,
                         bg='#282828', highlightthickness=0)
     ccanvas.pack(anchor='w')
@@ -223,6 +267,50 @@ def main():
     reflabel = tk.Label(right, text='', fg='#bbbbbb', font=('Consolas', 10, 'bold'),
                         anchor='w')
     reflabel.pack(anchor='w')
+
+    # ---- sheet controls. EVERY capability here has a visible, clickable
+    # affordance. C6-A2: Jay has no scroll wheel and two-finger gestures produce
+    # scroll, never zoom — so a control reachable only by wheel or by an
+    # unlabelled key does not exist for this user. Keys still work; they are
+    # never the only route, and each button carries its key in a tooltip-style
+    # suffix so the shortcut is discoverable from the UI itself.
+    sctl = tk.Frame(right)
+    sctl.pack(anchor='w', fill='x', pady=(2, 2))
+    tk.Label(sctl, text='sheet zoom', font=('Consolas', 9)).pack(side='left')
+    tk.Button(sctl, text='−', width=2, font=('Consolas', 10, 'bold'),
+              command=lambda: sheet_zoom(-1)).pack(side='left', padx=(4, 0))
+    sheet_zoom_lbl = tk.Label(sctl, text='', font=('Consolas', 10, 'bold'),
+                              width=6, relief='sunken', anchor='center')
+    sheet_zoom_lbl.pack(side='left', padx=2)
+    tk.Button(sctl, text='+', width=2, font=('Consolas', 10, 'bold'),
+              command=lambda: sheet_zoom(+1)).pack(side='left')
+    tk.Button(sctl, text='fit', width=4,
+              command=lambda: sheet_zoom_fit()).pack(side='left', padx=(4, 0))
+    tk.Label(sctl, text='[ ]', font=('Consolas', 8), fg='#888').pack(side='left', padx=(2, 12))
+
+    # Reference-view selector: three labelled buttons, current one highlighted.
+    # Jay could not find this at all when it was the unlabelled key `r` — the
+    # quantised view is the CEILING and is the one that matters most while
+    # drawing, so it cannot be hidden behind a keystroke.
+    #
+    # OWN ROW, and short labels. The left column takes ~1,100 px of a 1,540 px
+    # window, so the sheet column has roughly 430 px to play with — one row
+    # carrying both clusters needed ~725 and put these buttons off the right
+    # edge, which would have reproduced the exact defect this dispatch fixes.
+    # The full name of the current view is spelled out in `reflabel` below.
+    rctl = tk.Frame(right)
+    rctl.pack(anchor='w', fill='x', pady=(0, 2))
+    tk.Label(rctl, text='reference:', font=('Consolas', 9)).pack(side='left')
+    ref_btns = {}
+    REF_LABEL = {'amiga_raw': 'raw', 'amiga_quant': 'quantised',
+                 'oracle': 'C64 oracle'}
+    for v in S.Reference.VIEWS:
+        b = tk.Button(rctl, text=REF_LABEL[v], font=('Consolas', 9),
+                      command=lambda vv=v: set_ref(vv))
+        b.pack(side='left', padx=2)
+        ref_btns[v] = b
+    tk.Label(rctl, text='(r)', font=('Consolas', 8), fg='#888').pack(side='left', padx=(2, 0))
+
     sframe = tk.Frame(right)
     sframe.pack(fill='both', expand=True)
     vbar = tk.Scrollbar(sframe, orient='vertical')
@@ -361,10 +449,10 @@ def main():
                                   cell=st['cell'], cells=sib)
         st['imgs']['comp'] = ImageTk.PhotoImage(comp)
         st['imgs']['ref'] = ImageTk.PhotoImage(refimg)
-        ccanvas.config(width=comp.width + refimg.width + 40, height=comp.height)
+        ccanvas.config(width=comp.width + refimg.width + CMP_GAP, height=comp.height)
         ccanvas.delete('all')
         ccanvas.create_image(0, 0, anchor='nw', image=st['imgs']['comp'])
-        ccanvas.create_image(comp.width + 40, 0, anchor='nw', image=st['imgs']['ref'])
+        ccanvas.create_image(comp.width + CMP_GAP, 0, anchor='nw', image=st['imgs']['ref'])
         cmp_label.config(text='COMPOSED tile $%02X (current font)      |      %s'
                               % (st['tile'], S.Reference.LABELS[st['view']]))
 
@@ -432,25 +520,54 @@ def main():
         qlabel.config(text='%s: %d/%d  (%s)'
                            % (st['queue'], st['qi'] + 1 if ql else 0, len(ql),
                               queues.DESC[st['queue']]))
+        strip_btn.config(relief='sunken' if st['strip'] else 'raised',
+                         bg=ARM if st['strip'] else selbar.cget('bg'))
+        glyph_zoom_lbl.config(text='%dx' % st['zoom'])
+        sheet_zoom_lbl.config(text='%dx' % st['sheet_zoom'])
+        for v, b in ref_btns.items():                 # highlight the active view
+            b.config(relief='sunken' if v == st['view'] else 'raised',
+                     bg=ARM if v == st['view'] else sctl.cget('bg'),
+                     fg='black' if v == st['view'] else 'black')
         refresh_buttons()
 
     def check_fits():
-        """Say so when the layout does not fit the display.
+        """Say so when something is ACTUALLY clipped.
 
         Tk clamps a window to the screen instead of shrinking a fixed-size
         canvas, so an over-tall layout does not look broken — the bottom panels
         are simply not there, and a screenshot of the result looks plausible.
-        That is exactly how the stacked left column shipped past a first review,
-        so the condition now reports itself in the save banner."""
+        That is what the C6 version was written to catch.
+
+        **The C6 version tested the wrong thing and had been failing since it
+        was written** (C6-A2). It compared the window's REQUESTED width against
+        the screen, and this layout legitimately requests ~2,370 px: several
+        labels carry a `wraplength` and the sheet canvas is happy to expand. Tk
+        satisfies all of them by shrinking the expandable widgets, and nothing is
+        harmed. So the guard cried wolf on every redraw, and the one place it
+        writes — the save banner — is overwritten by the load message at startup,
+        which is why nobody saw it. A guard that always fires is a guard nobody
+        reads.
+
+        What actually matters is narrower and checkable directly:
+          - HEIGHT: the panels stack and cannot shrink, so an over-tall window
+            really does lose its bottom rows.
+          - WIDTH: only for rows of fixed-size controls. If a control row was
+            allocated less than it asked for, its right-hand buttons are off the
+            edge and unreachable — which is precisely the C6-A2 defect class.
+        """
         root.update_idletasks()
-        rw, rh = root.winfo_reqwidth(), root.winfo_reqheight()
-        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        if rw > sw or rh > sh - 40:
-            savebar.config(
-                text='LAYOUT: the window wants %dx%d on a %dx%d screen — the '
-                     'bottom of the panel is clipped. Lower the glyph zoom (-) '
-                     'or hide the strip (a).' % (rw, rh, sw, sh),
-                fg='white', bg=STOP)
+        bad = []
+        for name, w in (('sheet controls', sctl), ('reference row', rctl),
+                        ('glyph controls', gctl), ('toolbar', bar),
+                        ('selector row', selbar)):
+            have, want = w.winfo_width(), w.winfo_reqwidth()
+            if have > 1 and want > have:
+                bad.append('%s clipped (needs %dpx, has %d)' % (name, want, have))
+        rh, sh = root.winfo_reqheight(), root.winfo_screenheight()
+        if rh > sh - 40:
+            bad.append('window wants %dpx of height on a %dpx screen' % (rh, sh))
+        if bad:
+            savebar.config(text='LAYOUT: ' + '; '.join(bad), fg='white', bg=STOP)
             return False
         return True
 
@@ -475,13 +592,76 @@ def main():
 
     # ------------------------------------------------------------- selection --
     def select(tile, cell, sync_queue=True):
+        # C6-A2 AC3b. Zoom is a VIEWING preference and selection is a work item;
+        # changing one must not clobber the other. Captured and re-asserted here
+        # rather than relying on 'this function happens not to touch it'.
+        z0, sz0, view0 = st['zoom'], st['sheet_zoom'], st['view']
         st['tile'] = max(0, min(255, tile))
         st['cell'] = max(0, min(8, cell))
         if sync_queue:
             ql = qs[st['queue']]
             if st['tile'] in ql:
                 st['qi'] = ql.index(st['tile'])
+        assert (st['zoom'], st['sheet_zoom'], st['view']) == (z0, sz0, view0),             'selection changed a viewing preference'
         redraw()
+
+    def select_cell(k):
+        """Select cell k of the CURRENT tile — the composed-tile route.
+
+        Deliberately does not touch `fe` at all. Undo history and the stroke
+        stacks live per GLYPH in FontEdit, so moving the cursor to another cell
+        — including one that uses the very same glyph, which a tile may well do
+        (C6 §3) — cannot disturb them. Re-selecting is a cursor move, never a
+        reload. C6-A2 AC6 asserts this rather than trusting the sentence.
+        """
+        if not 0 <= k <= 8 or k == st['cell']:
+            return False
+        st['cell'] = k
+        redraw()
+        return True
+
+    def compose_click(e):
+        """Click either 24x24 in the left panel to select that cell's glyph.
+
+        The composed tile and the reference sit side by side on one canvas, so
+        the hit test resolves which of the two was clicked first, then does the
+        same 8-px subdivision the sheet uses. int() on canvasx/canvasy for the
+        reason C6 §3 records: a float there yields fractional cell indices and
+        the resolution silently goes wrong (§ known hazards).
+        """
+        k = compose_hit(int(ccanvas.canvasx(e.x)), int(ccanvas.canvasy(e.y)))
+        if k is not None:
+            select_cell(k)
+
+    def compose_hit(x, y):
+        """Composed-tile pixel -> cell index, or None. Shared by click and hover
+        so the readout can never disagree with what a click would do."""
+        cw, ch = CELL_W * CMP_ZOOM, CELL_H * CMP_ZOOM
+        tw, th = 24 * cw, 24 * ch
+        if 0 <= x < tw:
+            ox = x
+        elif tw + CMP_GAP <= x < tw + CMP_GAP + tw:
+            ox = x - (tw + CMP_GAP)
+        else:
+            return None
+        if not 0 <= y < th:
+            return None
+        return (y // (8 * ch)) * 3 + (ox // (8 * cw))
+
+    def compose_motion(e):
+        k = compose_hit(int(ccanvas.canvasx(e.x)), int(ccanvas.canvasy(e.y)))
+        if k is None:
+            return
+        g = mapping.glyphs[st['tile']][k]
+        coord.config(text='tile $%02X %s  glyph %s%s  — click to edit'
+                          % (st['tile'], PLANES[k],
+                             'none' if g is None else '$%02X' % g,
+                             '  (current)' if k == st['cell'] else ''))
+
+    def step_cell(delta):
+        """Traverse the tile's nine cells in TL->BR order, clamped at the ends so
+        'I have seen every cell' is unambiguous."""
+        select_cell(max(0, min(8, st['cell'] + delta)))
 
     def sheet_click(e):
         z = st['sheet_zoom']
@@ -583,20 +763,93 @@ def main():
         if g is not None and fe[g].undo_revert():
             redraw(sheet_too=False)
 
+    GLYPH_ZOOM_MIN, GLYPH_ZOOM_MAX, GLYPH_ZOOM_DEF = 2, 24, 8
+    SHEET_ZOOM_MIN, SHEET_ZOOM_MAX = 1, 8
+
     def zoom(delta):
-        st['zoom'] = max(2, min(20, st['zoom'] + delta))
+        """Glyph zoom, SELF-LIMITING on the display.
+
+        The glyph canvas is fixed-size and stacked, so every step up makes the
+        window taller — and past a point Tk clamps the window to the screen and
+        the bottom panels vanish (C6 §6 deviation 3, the whole reason
+        check_fits() exists). Rather than hardcode a guess at the ceiling, take
+        the step, ask whether it still fits, and step back if it does not. The
+        limit then follows whatever display the tool is actually running on.
+        """
+        was = st['zoom']
+        want = max(GLYPH_ZOOM_MIN, min(GLYPH_ZOOM_MAX, was + delta))
+        if want == was:
+            return
+        st['zoom'] = want
+        redraw(sheet_too=False)
+        if delta > 0 and not check_fits():
+            st['zoom'] = was
+            redraw(sheet_too=False)
+            savebar.config(
+                text='glyph zoom held at %dx — %dx would push the layout off a '
+                     '%d px screen. Hide the strip (a) for a little more room.'
+                     % (was, want, root.winfo_screenheight()),
+                fg='white', bg=INFO)
+
+    def glyph_zoom_fit(_=None):
+        """Back to the default. The glyph panel shows a single 8x8 with nothing
+        around it, so there is no 'fit to content' distinct from a sane default —
+        and it anchors on its own centre because it has no other anchor."""
+        st['zoom'] = GLYPH_ZOOM_DEF
         redraw(sheet_too=False)
 
+    def centre_on_selected():
+        """Keep the tile being worked on in view, CENTRED.
+
+        Button zoom has no pointer to anchor on, and the view centre is
+        arbitrary — the selected tile is the thing under work, so the view
+        follows it. At 5x on a 384x384 sheet an off-centre tile is one pan away
+        from lost, which is why this centres rather than merely keeping it
+        on-screen.
+        """
+        z = st['sheet_zoom']
+        x, y, w, h = S.tile_rect(st['tile'])
+        total = float(S.GRID * z)
+        cx, cy = (x + w / 2.0) * z, (y + h / 2.0) * z
+        vw = sheetc.winfo_width() or 384
+        vh = sheetc.winfo_height() or 384
+        if total > vw:
+            sheetc.xview_moveto(max(0.0, min(1.0 - vw / total, (cx - vw / 2.0) / total)))
+        else:
+            sheetc.xview_moveto(0.0)
+        if total > vh:
+            sheetc.yview_moveto(max(0.0, min(1.0 - vh / total, (cy - vh / 2.0) / total)))
+        else:
+            sheetc.yview_moveto(0.0)
+
     def sheet_zoom(delta):
-        st['sheet_zoom'] = max(1, min(5, st['sheet_zoom'] + delta))
+        z = max(SHEET_ZOOM_MIN, min(SHEET_ZOOM_MAX, st['sheet_zoom'] + delta))
+        if z == st['sheet_zoom']:
+            return
+        st['sheet_zoom'] = z
+        st['sheet_cache'] = (None, None)
+        redraw()
+        centre_on_selected()
+
+    def sheet_zoom_fit(_=None):
+        """Largest integer zoom at which the whole 384 sheet fits the viewport."""
+        vw = sheetc.winfo_width() or 384
+        vh = sheetc.winfo_height() or 384
+        z = max(SHEET_ZOOM_MIN, min(SHEET_ZOOM_MAX,
+                                    min(vw, vh) // S.GRID or SHEET_ZOOM_MIN))
+        st['sheet_zoom'] = z
+        st['sheet_cache'] = (None, None)
+        redraw()
+        centre_on_selected()
+
+    def set_ref(v):
+        st['view'] = v
         st['sheet_cache'] = (None, None)
         redraw()
 
     def cycle_ref(_=None):
         v = S.Reference.VIEWS
-        st['view'] = v[(v.index(st['view']) + 1) % len(v)]
-        st['sheet_cache'] = (None, None)
-        redraw()
+        set_ref(v[(v.index(st['view']) + 1) % len(v)])
 
     def toggle_strip(_=None):
         st['strip'] = not st['strip']
@@ -616,6 +869,7 @@ def main():
         st['qi'] = 0
         if qs[name]:
             select(qs[name][0], 0, sync_queue=False)
+            centre_on_selected()
         else:
             refresh_status()
 
@@ -625,6 +879,7 @@ def main():
             return
         st['qi'] = max(0, min(len(ql) - 1, st['qi'] + delta))
         select(ql[st['qi']], 0, sync_queue=False)
+        centre_on_selected()      # the queue can jump anywhere; bring it into view
 
     def move_cell(dx, dy):
         cy, cx = divmod(st['cell'], 3)
@@ -638,6 +893,8 @@ def main():
         if not fe.is_dirty() and not prog.done:
             savebar.config(text='nothing edited — nothing to save', fg='white', bg=INFO)
             return
+        prog.ui = {k: st[k] for k in ('view', 'zoom', 'sheet_zoom',
+                                      'tile', 'cell', 'queue')}
         try:
             r = P.save(cfg, fe, prog, src, source_sha)
         except OSError as ex:
@@ -679,6 +936,8 @@ def main():
     gcanvas.bind('<ButtonRelease-1>', on_release)
     gcanvas.bind('<Motion>', on_glyph_motion)
     gcanvas.bind('<ButtonPress-3>', eyedrop)
+    ccanvas.bind('<ButtonPress-1>', compose_click)
+    ccanvas.bind('<Motion>', compose_motion)
 
     root.bind('<Control-z>', do_undo)
     root.bind('<Control-y>', do_redo)
@@ -690,6 +949,12 @@ def main():
     root.bind(',', lambda _e: arm((st['colour'] - 1) % 16))
     root.bind('.', lambda _e: arm((st['colour'] + 1) % 16))
     root.bind('r', cycle_ref)
+    # Tab traverses the tile's nine cells TL->BR. 'break' stops Tk's own focus
+    # traversal from stealing it — without that the key moves focus between
+    # buttons and the cell never changes.
+    root.bind('<Tab>', lambda _e: (step_cell(+1), 'break')[1])
+    root.bind('<Shift-Tab>', lambda _e: (step_cell(-1), 'break')[1])
+    root.bind('<ISO_Left_Tab>', lambda _e: (step_cell(-1), 'break')[1])
     root.bind('a', toggle_strip)
     root.bind('d', toggle_done)
     root.bind('n', lambda _e: step_queue(+1))
@@ -724,10 +989,27 @@ def main():
         select(args.tile, args.cell)
     else:
         set_queue(st['queue'])
+    root.update_idletasks()
+    centre_on_selected()          # start looking at the tile we are working on
     savebar.config(text='loaded %s (%d glyphs, %d used by tiles) — sha256 %s'
                         % (os.path.relpath(src, C.REPO).replace('\\', '/'),
                            cfg.n_glyphs, len(mapping.used_glyphs()), source_sha[:16]),
                    fg='white', bg=IDLE)
+
+    # TEST SEAM. selftest.py drives these through real Tk events — a click on the
+    # composed tile, a keypress with focus parked on a Button — because C6-A2's
+    # two defects were both "the code is fine, the user cannot reach it", and
+    # only a driven event can tell those apart from a unit call.
+    root.gt = dict(st=st, select=select, select_cell=select_cell,
+                   compose_hit=compose_hit, step_cell=step_cell,
+                   zoom=zoom, sheet_zoom=sheet_zoom, sheet_zoom_fit=sheet_zoom_fit,
+                   glyph_zoom_fit=glyph_zoom_fit, centre_on_selected=centre_on_selected,
+                   set_ref=set_ref, cycle_ref=cycle_ref, glyph=glyph,
+                   fe=fe, mapping=mapping, prog=prog, cfg=cfg, sheetc=sheetc,
+                   ccanvas=ccanvas, gcanvas=gcanvas, save_btn=save_btn,
+                   check_fits=check_fits, redraw=redraw,
+                   CMP_ZOOM=CMP_ZOOM, CMP_GAP=CMP_GAP,
+                   SHEET_ZOOM_MAX=SHEET_ZOOM_MAX, GLYPH_ZOOM_MAX=GLYPH_ZOOM_MAX)
 
     if args.screenshot:
         # Evidence mode: realise the window, let Windows actually PAINT it, grab

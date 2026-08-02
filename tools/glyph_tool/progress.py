@@ -49,6 +49,11 @@ class Progress:
         self.last_edit = {}
         self.source_sha = None
         self.saves = 0
+        # C6-A2 AC8: viewing state persists across sessions with the rest of the
+        # progress. The reference view especially — Jay could not find the
+        # quantised view at all, and having to re-select it every session would
+        # be the same defect wearing a timer.
+        self.ui = {}
         self.load()
 
     # ---- persistence --------------------------------------------------------
@@ -63,6 +68,7 @@ class Progress:
         self.last_edit = {int(k): v for k, v in d.get('last_edit', {}).items()}
         self.source_sha = d.get('source_sha256')
         self.saves = d.get('saves', 0)
+        self.ui = d.get('ui', {}) or {}
 
     def to_dict(self, fontedit, source_path, source_sha, font_sha):
         edited = sorted(g.index for g in fontedit.edited())
@@ -83,6 +89,7 @@ class Progress:
             'source_sha256': source_sha,
             'font_sha256': font_sha,
             'n_glyphs': self.n,
+            'ui': self.ui,
             'counts': {
                 'untouched': sum(1 for v in states.values() if v == UNTOUCHED),
                 'edited': sum(1 for v in states.values() if v == EDITED),

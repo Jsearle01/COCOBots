@@ -1,0 +1,500 @@
+#!/usr/bin/env python3
+"""
+uitest.py — C6-A2. Drives the real UI with real Tk events.
+
+  python tools/glyph_tool/uitest.py
+
+WHY A SEPARATE HARNESS. C6's selftest checks the model: does the arithmetic
+resolve, does the round-trip hash. Both of C6-A2's defects passed every one of
+those checks and still made the tool unusable, because they were not model bugs:
+
+  defect 1  sheet zoom WORKED. It was bound only to `[`/`]` on the toplevel, and
+            there was no button. A model test calling sheet_zoom(+1) passes and
+            proves nothing about whether a human can reach it.
+  defect 2  cell selection existed on the sheet, not on the composed tile, which
+            is the panel you are looking at while drawing.
+
+So this harness asks the questions a model test cannot: does a BUTTON exist,
+does invoking it work, does a KEY work while focus sits somewhere else entirely,
+and does a CLICK at these pixel coordinates land on that cell.
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import config as C                                            # noqa: E402
+import glyph_tool_app as A                                    # noqa: E402
+import sheet as S                                             # noqa: E402
+
+FAILS, LINES = [], []
+
+
+def check(name, ok, detail=''):
+    LINES.append('%-4s %-44s %s' % ('PASS' if ok else 'FAIL', name, detail))
+    if not ok:
+        FAILS.append(name)
+    return ok
+
+
+class App:
+    """Build the real app, off-screen, and settle it."""
+
+    def __enter__(self):
+        sys.argv = ['glyph_tool_app', '--tile', '0']
+        import tkinter as tk
+        self._real_mainloop = tk.Misc.mainloop
+        self._real_tk_mainloop = tk.Tk.mainloop
+        tk.Misc.mainloop = lambda *a, **k: None               # build, do not block
+        tk.Tk.mainloop = lambda *a, **k: None
+        A.main()
+        tk.Misc.mainloop = self._real_mainloop
+        tk.Tk.mainloop = self._real_tk_mainloop
+        self.root = tk._default_root
+        self.gt = self.root.gt
+        self.root.geometry('1500x760+0+0')
+        self.settle()
+        return self
+
+    def settle(self, n=3):
+        for _ in range(n):
+            self.root.update_idletasks()
+            self.root.update()
+
+    def __exit__(self, *a):
+        try:
+            self.root.destroy()
+        except Exception:                                      # noqa: BLE001
+            pass
+
+
+def buttons(widget, out=None):
+    """Every Button in the tree, as {text: widget}."""
+    import tkinter as tk
+    out = {} if out is None else out
+    for w in widget.winfo_children():
+        if isinstance(w, tk.Button):
+            try:
+                out.setdefault(str(w.cget('text')), []).append(w)
+            except Exception:                                  # noqa: BLE001
+                pass
+        buttons(w, out)
+    return out
+
+
+# ------------------------------------------------------------------ AC1 -----
+def t_zoom_buttons(app):
+    """Both panels must have +/-/fit reachable BY CLICK ALONE."""
+    st, gt = app.gt['st'], app.gt
+    bs = buttons(app.root)
+    check('AC1 minus button exists', len(bs.get('−', [])) >= 2,
+          '%d found (sheet + glyph)' % len(bs.get('−', [])))
+    check('AC1 plus button exists', len(bs.get('+', [])) >= 2,
+          '%d found' % len(bs.get('+', [])))
+    check('AC1 fit button exists', len(bs.get('fit', [])) >= 2,
+          '%d found' % len(bs.get('fit', [])))
+
+    # invoke() is exactly what a mouse click does — no key, no wheel, no focus
+    before = st['sheet_zoom'], st['zoom']
+    for b in bs['+']:
+        b.invoke()
+    app.settle()
+    after = st['sheet_zoom'], st['zoom']
+    check('AC1 clicking + zooms both panels',
+          after[0] > before[0] and after[1] > before[1],
+          'sheet %d->%d  glyph %d->%d' % (before[0], after[0], before[1], after[1]))
+
+    for b in bs['−']:
+        b.invoke()
+    app.settle()
+    check('AC1 clicking - zooms out', (st['sheet_zoom'], st['zoom']) == before,
+          'sheet %d  glyph %d' % (st['sheet_zoom'], st['zoom']))
+
+    for b in bs['fit']:
+        b.invoke()
+    app.settle()
+    check('AC1 fit buttons work', st['zoom'] == 8 and st['sheet_zoom'] >= 1,
+          'glyph %dx  sheet %dx' % (st['zoom'], st['sheet_zoom']))
+
+    # the readout
+    labels = []
+
+    def walk(w):
+        import tkinter as tk
+        for c in w.winfo_children():
+            if isinstance(c, tk.Label):
+                labels.append(str(c.cget('text')))
+            walk(c)
+    walk(app.root)
+    check('AC1 zoom readout visible',
+          any(t.endswith('x') and t[:-1].isdigit() for t in labels),
+          [t for t in labels if t.endswith('x') and t[:-1].isdigit()])
+
+
+def t_zoom_key_without_focus(app):
+    """DEFECT-1 DIAGNOSIS. Park focus on a Button and fire the key. If sheet zoom
+    were focus-dependent this fails; it passes, which is what proves the cause
+    was discoverability rather than focus."""
+    st = app.gt['st']
+    bs = buttons(app.root)
+    victim = bs['SAVE'][0]
+    victim.focus_set()
+    app.settle()
+    focused = str(app.root.focus_get())
+    before = st['sheet_zoom']
+    app.root.event_generate('<KeyPress-bracketright>')
+    app.settle()
+    check('AC1 sheet-zoom key works with focus elsewhere',
+          st['sheet_zoom'] == before + 1,
+          'focus on %s; [ ] still reached the toplevel  %d->%d'
+          % (focused, before, st['sheet_zoom']))
+    app.root.event_generate('<KeyPress-bracketleft>')
+    app.settle()
+
+
+# ------------------------------------------------------------------ AC3 -----
+def t_zoom_anchor(app):
+    """Sheet zoom must anchor on the SELECTED TILE, not the origin."""
+    st, gt = app.gt['st'], app.gt
+    gt['select'](250, 0)                       # bottom-right corner of the sheet
+    app.settle()
+    while st['sheet_zoom'] > 1:
+        gt['sheet_zoom'](-1)
+    app.settle()
+
+    for _ in range(4):
+        gt['sheet_zoom'](+1)
+    app.settle()
+    z = st['sheet_zoom']
+    sheetc = gt['sheetc']
+    x, y, w, h = S.tile_rect(250)
+    cx, cy = (x + w / 2.0) * z, (y + h / 2.0) * z
+    x0 = sheetc.canvasx(0)
+    y0 = sheetc.canvasy(0)
+    vw, vh = sheetc.winfo_width(), sheetc.winfo_height()
+    inview = x0 <= cx <= x0 + vw and y0 <= cy <= y0 + vh
+    check('AC3 selected tile still in view at %dx' % z, inview,
+          'tile 250 centre (%.0f,%.0f) in viewport x[%.0f..%.0f] y[%.0f..%.0f]'
+          % (cx, cy, x0, x0 + vw, y0, y0 + vh))
+    # ...and CENTRED, not merely on-screen. A tile within half a viewport of the
+    # sheet edge CANNOT be centred without scrolling past the content, so the
+    # honest test is "centred, or the view is already hard against the edge it
+    # would have to scroll past". Tile 250 is in the bottom row, which is exactly
+    # that case — an unconditional tolerance here fails on correct behaviour.
+    total = float(S.GRID * z)
+    want_x = max(0.0, min(total - vw, cx - vw / 2.0))
+    want_y = max(0.0, min(total - vh, cy - vh / 2.0))
+    off = max(abs(x0 - want_x), abs(y0 - want_y))
+    check('AC3 and centred as far as the scroll range allows', off <= 2,
+          'view at (%.0f,%.0f), clamped ideal (%.0f,%.0f), error %.0f px'
+          % (x0, y0, want_x, want_y, off))
+
+    # a tile in the MIDDLE has no clamp, so it must be centred outright
+    gt['select'](8 * 16 + 8, 0)
+    app.settle()
+    gt['sheet_zoom'](-1)
+    gt['sheet_zoom'](+1)
+    app.settle()
+    x, y, w, h = S.tile_rect(8 * 16 + 8)
+    cx, cy = (x + w / 2.0) * z, (y + h / 2.0) * z
+    off2 = max(abs(cx - (sheetc.canvasx(0) + vw / 2.0)),
+               abs(cy - (sheetc.canvasy(0) + vh / 2.0)))
+    check('AC3 a mid-sheet tile is centred outright', off2 <= 24 * z,
+          'tile 136 off-centre by %.0f px (tolerance %d)' % (off2, 24 * z))
+
+
+def t_no_selection_state(app):
+    """AC3 also asks what happens with nothing selected. Establish whether that
+    state can occur at all rather than assuming Jay is right."""
+    st, gt = app.gt['st'], app.gt
+    check('AC3 a tile is always selected', isinstance(st['tile'], int)
+          and 0 <= st['tile'] <= 255 and isinstance(st['cell'], int),
+          'tile=%r cell=%r — st is seeded with 0 and select() clamps to 0..255, '
+          'so no unselected state exists' % (st['tile'], st['cell']))
+    gt['select'](-5, 0)
+    gt['select'](999, 0)
+    app.settle()
+    check('AC3 out-of-range selection clamps, no crash',
+          st['tile'] == 255, 'select(-5) then select(999) -> %d' % st['tile'])
+
+
+def t_zoom_survives_selection(app):
+    """AC3b — changing the selected tile must not reset either zoom."""
+    st, gt = app.gt['st'], app.gt
+    gt['sheet_zoom'](+2)
+    gt['zoom'](+3)
+    app.settle()
+    sz, gz, view = st['sheet_zoom'], st['zoom'], st['view']
+    for t in (7, 100, 3, 250, 0):
+        gt['select'](t, 4)
+    app.settle()
+    check('AC3b selection does not reset zoom',
+          (st['sheet_zoom'], st['zoom'], st['view']) == (sz, gz, view),
+          'after 5 selections: sheet %dx glyph %dx view %s' %
+          (st['sheet_zoom'], st['zoom'], st['view']))
+
+
+# ------------------------------------------------------------ AC4/5/6/7 -----
+def t_compose_click(app):
+    """All NINE cells, by pixel coordinate, on both the composed tile and the
+    reference beside it — the same exhaustive standard C6 met for the sheet."""
+    st, gt = app.gt['st'], app.gt
+    gt['select'](7, 0)
+    app.settle()
+    cw, ch = A.CELL_W * gt['CMP_ZOOM'], A.CELL_H * gt['CMP_ZOOM']
+    tw = 24 * cw
+
+    bad = []
+    for k in range(9):
+        cy, cx = divmod(k, 3)
+        # a point in the middle of that cell, in BOTH panels
+        px, py = cx * 8 * cw + 4 * cw, cy * 8 * ch + 4 * ch
+        for base, which in ((0, 'composed'), (tw + gt['CMP_GAP'], 'reference')):
+            gt['select'](7, 0)
+            got = gt['compose_hit'](base + px, py)
+            if got != k:
+                bad.append((which, k, got))
+    check('AC4 all 9 cells resolve in both panels', not bad, str(bad) or
+          '18 hit tests (9 cells x composed/reference)')
+
+    # corners, where an off-by-one lives
+    edges = [((0, 0), 0), ((8 * cw - 1, 8 * ch - 1), 0), ((8 * cw, 0), 1),
+             ((tw - 1, th_last := 24 * ch - 1), 8)]
+    bad2 = [(p, e, gt['compose_hit'](*p)) for p, e in edges
+            if gt['compose_hit'](*p) != e]
+    check('AC4 cell boundaries', not bad2, str(bad2) or '8/16/24-px edges')
+    check('AC4 outside the tiles is None',
+          gt['compose_hit'](tw + 5, 5) is None
+          and gt['compose_hit'](0, 24 * ch + 5) is None, 'gutter and below')
+
+    # a real click event, not just the hit test
+    gt['select'](7, 0)
+    app.settle()
+    cc = gt['ccanvas']
+    cc.event_generate('<ButtonPress-1>', x=int(1 * 8 * cw + 4 * cw),
+                      y=int(2 * 8 * ch + 4 * ch), warp=False)
+    app.settle()
+    check('AC4 a real click selects that cell', st['cell'] == 7,
+          'clicked BM -> cell %d' % st['cell'])
+
+
+def t_selected_cell_distinct(app):
+    """AC5 — the edited cell must be marked differently from the orange
+    same-glyph outline. Rendered, then the two marks counted in the pixels."""
+    import numpy as np
+    import render as R
+    from tilemap import Mapping
+    gt = app.gt
+    m = gt['mapping']
+    tile = next((t for t in range(256)
+                 if len(m.tile_glyph_set(t)) < 9 and m.glyphs[t][0] is not None), 7)
+    gs = m.tile_glyph_set(tile)
+    g = m.glyphs[tile][0]
+    sib = gs.get(g, [])
+    import sheet as SS
+    pal, _, _ = SS.load_palette()
+    img = np.asarray(R.tile_image(gt['fe'].font, m, tile, pal, 3, cell=0, cells=sib))
+    n_edit = int((img == np.array(R.EDITING)).all(axis=2).sum())
+    n_sib = int((img == np.array(R.SIBLING)).all(axis=2).sum())
+    n_cur = int((img == np.array(R.CURSOR)).all(axis=2).sum())
+    check('AC5 edited cell has its own mark',
+          n_edit > 0 and R.EDITING != R.SIBLING,
+          'tile $%02X: %d edit-tick px, %d sibling px, %d cursor px'
+          % (tile, n_edit, n_sib, n_cur))
+
+
+def t_reselect_is_noop(app):
+    """AC6 — re-selecting the glyph already under edit must not clear undo."""
+    st, gt = app.gt['st'], app.gt
+    m, fe = gt['mapping'], gt['fe']
+    # a tile using the SAME glyph in two different cells
+    pair = None
+    for t in range(256):
+        for gg, cells in m.tile_glyph_set(t).items():
+            if len(cells) >= 2:
+                pair = (t, gg, cells[0], cells[1])
+                break
+        if pair:
+            break
+    if not pair:
+        check('AC6 re-select preserves undo', False, 'no tile repeats a glyph')
+        return
+    t, gg, k0, k1 = pair
+    gt['select'](t, k0)
+    app.settle()
+    ge = fe[gg]
+    ge.begin_stroke()
+    ge.paint(0, 0, (int(fe.font[gg][0, 0]) + 1) % 16)
+    depth, dirty = len(ge.undo), ge.is_dirty()
+    check('AC6 setup: a stroke is live', depth == 1 and dirty,
+          'tile $%02X glyph $%02X in cells %s' % (t, gg, (k0, k1)))
+
+    gt['select_cell'](k1)                       # same glyph, different cell
+    app.settle()
+    check('AC6 re-selecting the same glyph is a no-op',
+          len(fe[gg].undo) == depth and fe[gg].is_dirty() == dirty
+          and gt['glyph']() == gg,
+          'undo depth %d kept, still dirty, glyph still $%02X'
+          % (len(fe[gg].undo), gt['glyph']()))
+    check('AC6 selecting the SAME cell returns False',
+          gt['select_cell'](k1) is False, 'no redraw, no state change')
+    fe[gg].revert()
+
+
+def t_keyboard_traversal(app):
+    """AC7 — Tab steps the nine cells; it must not be eaten by focus traversal."""
+    st, gt = app.gt['st'], app.gt
+    gt['select'](7, 0)
+    app.settle()
+    seen = [st['cell']]
+    for _ in range(8):
+        app.root.event_generate('<KeyPress-Tab>')
+        app.settle(1)
+        seen.append(st['cell'])
+    check('AC7 Tab traverses all nine cells TL->BR', seen == list(range(9)), seen)
+    for _ in range(8):
+        app.root.event_generate('<KeyPress-Tab>', state=1)      # Shift-Tab
+        app.settle(1)
+    check('AC7 Shift-Tab walks back', st['cell'] == 0, 'cell %d' % st['cell'])
+
+
+# ------------------------------------------------------------------ AC8 -----
+def t_reference_buttons(app):
+    st, gt = app.gt['st'], app.gt
+    bs = buttons(app.root)
+    names = ['raw', 'quantised', 'C64 oracle']
+    check('AC8 three reference buttons exist',
+          all(n in bs for n in names), [n for n in names if n not in bs])
+    for n, v in zip(names, S.Reference.VIEWS):
+        bs[n][0].invoke()
+        app.settle()
+        if st['view'] != v:
+            check('AC8 button "%s" selects %s' % (n, v), False, st['view'])
+            return
+    check('AC8 every reference view reachable by click alone', True,
+          'raw -> quantised -> oracle, all three')
+
+    # the CURRENT view must be spelled out on screen for whichever view is
+    # active — three near-identical images with no label is its own trap
+    def labels():
+        import tkinter as tk
+        out = []
+
+        def walk(w):
+            for c in w.winfo_children():
+                if isinstance(c, tk.Label):
+                    out.append(str(c.cget('text')))
+                walk(c)
+        walk(app.root)
+        return out
+
+    missing = []
+    for n, v in zip(names, S.Reference.VIEWS):
+        bs[n][0].invoke()
+        app.settle()
+        word = S.Reference.LABELS[v].split()[0]
+        if not any(word in t and len(t) > 20 for t in labels()):
+            missing.append(v)
+    check('AC8 the ACTIVE view is named on screen', not missing,
+          str(missing) or 'all three named in full while selected')
+    bs['raw'][0].invoke()
+    app.settle()
+
+
+def t_ui_state_persists(app):
+    """AC8 — the view survives a session, via the progress sidecar."""
+    gt = app.gt
+    prog = gt['prog']
+    prog.ui = {'view': 'amiga_quant', 'zoom': 11, 'sheet_zoom': 3,
+               'tile': 42, 'cell': 5, 'queue': 'worst'}
+    d = prog.to_dict(gt['fe'], gt['cfg'].font, 'x' * 64, 'y' * 64)
+    check('AC8 view is written to the sidecar',
+          d.get('ui', {}).get('view') == 'amiga_quant', d.get('ui'))
+
+
+def t_no_wheel_only(app):
+    """AC2 — enumerate wheel/gesture bindings and confirm each has another route."""
+    gt = app.gt
+    wheel = []
+    for name, w in (('sheet', gt['sheetc']), ('glyph', gt['gcanvas']),
+                    ('tile', gt['ccanvas'])):
+        for seq in w.bind():
+            if 'Wheel' in seq or 'Button-4' in seq or 'Button-5' in seq:
+                wheel.append('%s%s' % (name, seq))
+    # the sheet's wheel bindings PAN; scrollbars do the same job by click-drag
+    sframe = gt['sheetc'].master
+    import tkinter as tk
+    bars = [c for c in sframe.winfo_children() if isinstance(c, tk.Scrollbar)]
+    check('AC2 wheel bindings enumerated', True, wheel or 'none')
+    check('AC2 every wheel binding is pan, and scrollbars duplicate it',
+          all('Wheel' in s for s in wheel) and len(bars) == 2,
+          '%d wheel bindings (all pan), %d scrollbars' % (len(wheel), len(bars)))
+
+
+def t_check_fits(app):
+    """Hard constraint: the layout must fit at every zoom the tool will ACCEPT.
+
+    Sheet zoom cannot break it — the sheet canvas expands and scrolls, so the
+    window never grows. Glyph zoom can, and does: the canvas is fixed-size and
+    stacked. So the requirement is not 'every zoom fits' but 'the tool refuses
+    the zooms that do not', which is what the self-limit in zoom() enforces.
+    """
+    st, gt = app.gt['st'], app.gt
+    st['zoom'] = 8
+    gt['redraw']()
+    app.settle(1)
+
+    bad = [ 'sheet %dx' % sz for sz in range(1, gt['SHEET_ZOOM_MAX'] + 1)
+            if (st.__setitem__('sheet_zoom', sz),
+                st.__setitem__('sheet_cache', (None, None)),
+                gt['redraw'](), app.settle(1), not gt['check_fits']())[-1] ]
+    st['sheet_zoom'] = 1
+    st['sheet_cache'] = (None, None)
+    gt['redraw']()
+    app.settle(1)
+    check('check_fits passes at every SHEET zoom', not bad, str(bad) or
+          '1x-%dx, canvas expands so the window never grows' % gt['SHEET_ZOOM_MAX'])
+
+    # walk glyph zoom all the way up; the self-limit must stop it before clipping
+    for _ in range(40):
+        gt['zoom'](+1)
+        app.settle(1)
+    reached = st['zoom']
+    check('glyph zoom self-limits before clipping',
+          gt['check_fits']() and reached < gt['GLYPH_ZOOM_MAX'],
+          'held at %dx (ceiling offered: %dx) on a %dpx screen; layout still fits'
+          % (reached, gt['GLYPH_ZOOM_MAX'], app.root.winfo_screenheight()))
+    for _ in range(40):
+        gt['zoom'](-1)
+    st['zoom'] = 8
+    gt['redraw']()
+    app.settle(1)
+    check('glyph zoom returns to the default cleanly',
+          st['zoom'] == 8 and gt['check_fits']())
+
+
+def main():
+    try:
+        import tkinter  # noqa: F401
+    except Exception as e:                                     # noqa: BLE001
+        print('uitest needs Tkinter on a machine with a display: %s' % e)
+        return 0
+    with App() as app:
+        for fn in (t_zoom_buttons, t_zoom_key_without_focus, t_zoom_anchor,
+                   t_no_selection_state, t_zoom_survives_selection,
+                   t_compose_click, t_selected_cell_distinct, t_reselect_is_noop,
+                   t_keyboard_traversal, t_reference_buttons, t_ui_state_persists,
+                   t_no_wheel_only, t_check_fits):
+            try:
+                fn(app)
+            except Exception as ex:                            # noqa: BLE001
+                import traceback
+                check(fn.__name__, False, 'raised %s: %s' % (type(ex).__name__, ex))
+                traceback.print_exc()
+    print('\n'.join(LINES))
+    print('\n%d checks, %d failed' % (len(LINES), len(FAILS)))
+    return 1 if FAILS else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

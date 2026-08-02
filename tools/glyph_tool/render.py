@@ -69,15 +69,20 @@ def compose_tile(font, mapping, tile):
 
 
 SIBLING = (255, 120, 0)          # another cell in THIS tile using the same glyph
+EDITING = (0, 255, 136)          # corner ticks on the cell under edit
 
 
 def _cell_marks(img, zoom, cells, cell):
     """Outline every cell of the tile that uses the selected glyph, then the
-    clicked one on top.
+    cell being EDITED on top, in a visibly different mark.
 
-    This is how "a tile may use the same glyph more than once" (C6 §3) becomes
-    visible rather than a footnote: paint one stroke and every orange box in the
-    composed tile moves with it, because they are the same 64 nibbles.
+    Two different facts, so two different marks (C6-A2 AC5):
+      ORANGE, 1px          another cell of this tile drawing the same glyph.
+                           Paint one stroke and every orange box moves with it,
+                           because they are the same 64 nibbles (C6 §3).
+      WHITE 3px + corners  the cell you are editing. Thicker, plus corner ticks,
+                           so it reads as "here" at a glance even when it sits
+                           inside the orange set — which it always does.
     """
     d = ImageDraw.Draw(img)
     cw, ch = CELL_W * zoom, CELL_H * zoom
@@ -87,8 +92,15 @@ def _cell_marks(img, zoom, cells, cell):
                      (cx + 1) * 8 * cw - 1, (cy + 1) * 8 * ch - 1], outline=SIBLING)
     if cell is not None:
         cy, cx = divmod(cell, 3)
-        d.rectangle([cx * 8 * cw, cy * 8 * ch,
-                     (cx + 1) * 8 * cw - 1, (cy + 1) * 8 * ch - 1], outline=CURSOR)
+        x0, y0 = cx * 8 * cw, cy * 8 * ch
+        x1, y1 = (cx + 1) * 8 * cw - 1, (cy + 1) * 8 * ch - 1
+        d.rectangle([x0, y0, x1, y1], outline=CURSOR, width=3)
+        t = max(4, cw)                       # corner ticks, unmistakable at any zoom
+        for (ax, ay, bx, by) in ((x0, y0, x0 + t, y0), (x0, y0, x0, y0 + t),
+                                 (x1 - t, y0, x1, y0), (x1, y0, x1, y0 + t),
+                                 (x0, y1 - t, x0, y1), (x0, y1, x0 + t, y1),
+                                 (x1, y1 - t, x1, y1), (x1 - t, y1, x1, y1)):
+            d.line([ax, ay, bx, by], fill=EDITING, width=3)
     return img
 
 

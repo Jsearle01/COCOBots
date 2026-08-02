@@ -119,7 +119,7 @@ class Mapping:
         for w in self.warnings(glyph):
             s += '   ! ' + w
         ts = self.tiles_of.get(glyph, ())
-        s += '   (%d referenced, %d unverified, %d available)' % (
+        s += '  (%dR %dU %dA)' % (
             len([t for t in ts if t in self.referenced]),
             len([t for t in ts if t in self.unverified]),
             len([t for t in ts if t in self.available]))
