@@ -590,6 +590,7 @@ def t_accept_undo(app):
     depth = len(fe.history)
     gt['accept_tile']()
     app.settle(1)
+    written = list(fe.history[-1]) if fe.history else []
     after = glyphio.sha256_bytes(glyphio.pack(fe.font))
     check('A3-AC5 accept changed the font', after != before,
           '%s -> %s' % (before[:12], after[:12]))
@@ -601,9 +602,14 @@ def t_accept_undo(app):
     back = glyphio.sha256_bytes(glyphio.pack(fe.font))
     check('A3-AC5 one undo restores byte-identically', back == before,
           '%s == %s' % (back[:12], before[:12]))
+    # Scoped to the glyphs THIS accept wrote, not to the whole sidecar. The
+    # authored font is a live working file — Jay accepts and saves while these
+    # tests run — so "prog.accepted is empty" was an assertion about his session,
+    # not about undo. It failed the moment he used the feature, which is exactly
+    # when the tool is working.
     check('A3-AC5 undo cleared the accepted provenance',
-          not any(g in gt['prog'].accepted for g in range(len(fe.font))),
-          'sidecar does not claim art the font no longer holds')
+          not any(g in gt['prog'].accepted for g in written),
+          'the %d glyphs this accept wrote are no longer claimed' % len(written))
 
 
 def t_accept_subset(app):
@@ -758,8 +764,12 @@ def t_coco_alignment(app):
     gt = app.gt
     m, fe = gt['mapping'], gt['fe']
     pal = gt['ref'].pal_rgb
-    eng = np.asarray(Image.open(os.path.join(C.REPO, 'art', 'coco-engine.png'))
-                     .convert('RGB'))
+    # Rendered LIVE from the font in the editor, not read from art/coco-engine.png.
+    # That file is a snapshot at the font it was emitted from (C6-A4 §7 flag 3),
+    # and Jay edits the font between runs — comparing against it would test how
+    # recently the PNG was re-emitted, not whether the geometry is aligned.
+    import cocosheet as CS
+    eng = CS.engine_sheet(m.cfg, pal, fe.font)
 
     # landmark 1: every tile must agree with the editor's own composed-tile path,
     # which is an independent code path over the same mapping
@@ -831,6 +841,80 @@ def t_coco_accept_source(app):
     app.settle(1)
 
 
+# ------------------------------------------------------------- C6-A5 -------
+def t_decor_sweep(app):
+    """AC3/AC4 — no decoration drawn over palette-coloured artwork may sit within
+    100 RGB units of a palette colour, unless the exception is argued in code."""
+    import decor as D
+    pal = app.gt['ref'].pal_rgb
+    bad = D.collisions(pal)
+    check('A5-AC4 no decoration collides with the palette', not bad,
+          str([(r[0], r[1], round(r[3], 1)) for r in bad]) or
+          '%d decorations swept, %d argued exceptions'
+          % (len(D.WHERE), len(D.EXCEPTIONS)))
+
+    rows = {r[0]: r for r in D.sweep(pal)}
+    check('A5-AC3 sibling outline is magenta and NOT from the palette',
+          D.SIBLING_OUTLINE == '#FF00FF' and rows['SIBLING_OUTLINE'][3] > 100,
+          '%s, %.1f units from the nearest palette colour'
+          % (D.SIBLING_OUTLINE, rows['SIBLING_OUTLINE'][3]))
+
+    # every argued exception must actually be argued, not just listed
+    check('A5-AC4 each exception carries a reason',
+          all(len(D.EXCEPTIONS.get(n, '')) > 60 for n in D.EXCEPTIONS),
+          ', '.join(sorted(D.EXCEPTIONS)))
+
+    # the two-tone markers must be a PAIR — a light one alone would be palette $3F
+    check('A5-AC2 the neutral marker is two-tone',
+          D.MARK_LIGHT != D.MARK_DARK
+          and rows['MARK_LIGHT'][5] == 'EXCEPTION'
+          and rows['MARK_DARK'][5] == 'EXCEPTION',
+          '%s beside %s — no flat colour hides both'
+          % (D.MARK_LIGHT, D.MARK_DARK))
+
+
+def t_decor_single_source(app):
+    """The sweep is only meaningful if it sees every decoration. Catch a colour
+    literal added straight into a drawing call, bypassing decor.py."""
+    import re
+    root = os.path.join(C.REPO, 'tools', 'glyph_tool')
+    pat = re.compile(r'(?:outline|fill)\s*=\s*[\'"]#([0-9A-Fa-f]{6})[\'"]')
+    stray = []
+    for fn in ('glyph_tool_app.py', 'render.py'):
+        with open(os.path.join(root, fn), encoding='utf-8') as f:
+            for m in pat.finditer(f.read()):
+                stray.append('%s:#%s' % (fn, m.group(1).upper()))
+    check('A5-AC4 no colour literal bypasses decor.py', not stray,
+          str(stray) or 'all drawing colours come from decor.py')
+
+
+def t_outline_sets_unchanged(app):
+    """AC5 — a colour change looks inert and is not. Re-verify the C6 AC6 figures
+    rather than assuming which tiles are outlined did not move."""
+    from tilemap import Mapping
+    m = Mapping(C.CONFIGS['shipped'])
+    expect = {0x4D: (122, 210), 0x20: (122, 438), 0x3A: (108, 396),
+              0x66: (88, 268), 0x5F: (83, 140), 0x64: (60, 176), 0x67: (33, 81)}
+    bad = [('$%02X' % g, m.n_tiles(g), m.n_cells(g))
+           for g, (tt, cc) in expect.items()
+           if (m.n_tiles(g), m.n_cells(g)) != (tt, cc)]
+    check('A5-AC5 sibling sets unchanged by the colour change', not bad,
+          str(bad) or '$3A=108/396 $4D=122/210 $20=122/438 +4 more, post-C7')
+
+    # and the set the sheet actually draws is still tiles_of, recounted
+    for g in (0x3A, 0x4D):
+        recount = {t for t in range(256) for k in range(9)
+                   if m.codes[t][k] is not None and (m.codes[t][k] & 0x7F) == g}
+        check('A5-AC5 outline set $%02X recounts' % g, recount == m.tiles_of[g],
+              '%d tiles' % len(recount))
+
+    a = Mapping(C.CONFIGS['a192'])
+    sib = [a.n_tiles(g) for g in a.used_glyphs()]
+    check('A5-AC5 sibling-count profile reported',
+          bool(sib), 'a192: min %d median %d mean %d max %d'
+          % (min(sib), sorted(sib)[len(sib) // 2], sum(sib) // len(sib), max(sib)))
+
+
 def main():
     try:
         import tkinter  # noqa: F401
@@ -847,6 +931,7 @@ def main():
                    t_accept_undo, t_accept_subset, t_accept_source,
                    t_accept_provenance, t_accept_queue,
                    t_coco_sheets, t_coco_alignment, t_coco_accept_source,
+                   t_decor_sweep, t_decor_single_source, t_outline_sets_unchanged,
                    t_check_fits):
             try:
                 fn(app)

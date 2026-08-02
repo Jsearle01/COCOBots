@@ -15,13 +15,18 @@ than a Python per-zoomed-pixel loop, which is what made POP's sprite tool lag.
 import numpy as np
 from PIL import Image, ImageDraw
 
+import decor as D
 from pixel_map import CELL_W, CELL_H
 
+# Every colour drawn OVER the artwork comes from decor.py, which measures each
+# one against the adopted palette (C6-A5). Defining them here is what let an
+# amber marker sit at distance 0.0 from palette $34 for four dispatches.
 BG = (40, 40, 40)
-GRID = (70, 70, 70)
-CHANGED = (255, 228, 0)          # baseline-differs highlight, drawn as an OUTLINE
-CURSOR = (255, 255, 255)
-NODATA = (120, 0, 120)           # tile 255 BR: no data, NOT glyph $00
+GRID = D._rgb(D.GLYPH_GRID)
+CHANGED = D._rgb(D.CHANGED_PIXEL)      # baseline-differs highlight, an OUTLINE
+CURSOR = D._rgb(D.MARK_LIGHT)
+DARK = D._rgb(D.MARK_DARK)
+NODATA = D._rgb(D.NODATA_FILL)         # a cell with no storage at all
 
 
 def _expand(arr, cw, ch):
@@ -68,8 +73,8 @@ def compose_tile(font, mapping, tile):
     return out, nod
 
 
-SIBLING = (255, 120, 0)          # another cell in THIS tile using the same glyph
-EDITING = (0, 255, 136)          # corner ticks on the cell under edit
+SIBLING = D._rgb(D.CELL_SIBLING)    # another cell in THIS tile on the same glyph
+EDITING = D._rgb(D.CELL_EDIT_TICK)  # corner ticks on the cell under edit
 
 
 def _cell_marks(img, zoom, cells, cell):
@@ -94,7 +99,12 @@ def _cell_marks(img, zoom, cells, cell):
         cy, cx = divmod(cell, 3)
         x0, y0 = cx * 8 * cw, cy * 8 * ch
         x1, y1 = (cx + 1) * 8 * cw - 1, (cy + 1) * 8 * ch - 1
-        d.rectangle([x0, y0, x1, y1], outline=CURSOR, width=3)
+        # TWO-TONE, not white alone: white IS palette $3F, so a white box
+        # disappears on a white cell. A dark line immediately outside it cannot
+        # be hidden by the same flat colour (C6-A5).
+        d.rectangle([x0 - 1, y0 - 1, x1 + 1, y1 + 1], outline=DARK, width=1)
+        d.rectangle([x0, y0, x1, y1], outline=CURSOR, width=2)
+        d.rectangle([x0 + 2, y0 + 2, x1 - 2, y1 - 2], outline=DARK, width=1)
         t = max(4, cw)                       # corner ticks, unmistakable at any zoom
         for (ax, ay, bx, by) in ((x0, y0, x0 + t, y0), (x0, y0, x0, y0 + t),
                                  (x1 - t, y0, x1, y0), (x1, y0, x1, y0 + t),

@@ -53,6 +53,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import accept as A                    # noqa: E402
+import decor as D                     # noqa: E402
 import config as C                    # noqa: E402
 import glyphio                        # noqa: E402
 import progress as P                  # noqa: E402
@@ -68,10 +69,13 @@ OK, STOP, INFO, IDLE = '#1b7f1b', '#b02020', '#666666', '#444444'
 STATE_BG = {P.UNTOUCHED: '#555555', P.EDITED: '#8a6d00',
             P.ACCEPTED: '#00647a', P.DONE: '#1b7f1b'}
 
-AVAIL_MARK = '#00ff88'        # available — a free slot, marked invitingly
-UNVERIFIED_MARK = '#ffaa00'   # no static reference — drawn normally
-AFFECTED = '#00e0ff'
-SELECTED = '#ffe400'
+# Sheet decorations come from decor.py, which measures every one against the
+# adopted palette (C6-A5). UNVERIFIED_MARK used to be #FFAA00 — exactly palette
+# $34 — so it vanished on every light-orange tile.
+AVAIL_MARK = D.AVAILABLE_MARK
+UNVERIFIED_MARK = D.UNVERIFIED_MARK
+AFFECTED = D.SIBLING_OUTLINE          # magenta: the one hue the palette has not got
+MARK_LIGHT, MARK_DARK = D.MARK_LIGHT, D.MARK_DARK
 
 CLS_BG = {'available': '#0b6b3a', 'referenced': '#3a3a3a',
           'no-static-reference': '#8a5a00'}
@@ -458,14 +462,23 @@ def main():
                 sheetc.create_rectangle(x * z, y * z, (x + w) * z - 1, (y + h) * z - 1,
                                         outline=AFFECTED, width=1, tags='aff')
 
-        # the selection: tile box, then the cell box inside it
+        # THE SELECTED TILE, distinguished from its siblings WITHOUT a hue
+        # (C6-A5 §3). With a median of 88 tiles outlined magenta, the one you are
+        # on has to stand out — and every neutral is close to one of the
+        # palette's four greys, so the separation is structural: a dark line
+        # immediately outside a light one. No single flat colour can hide both.
         x, y, w, h = S.tile_rect(st['tile'])
-        sheetc.create_rectangle(x * z - 1, y * z - 1, (x + w) * z, (y + h) * z,
-                                outline=SELECTED, width=2, tags='sel')
+        sheetc.create_rectangle(x * z - 2, y * z - 2, (x + w) * z + 1, (y + h) * z + 1,
+                                outline=MARK_DARK, width=2, tags='sel')
+        sheetc.create_rectangle(x * z, y * z, (x + w) * z - 1, (y + h) * z - 1,
+                                outline=MARK_LIGHT, width=2, tags='sel')
         cy, cx = divmod(st['cell'], 3)
+        sheetc.create_rectangle((x + cx * 8) * z - 1, (y + cy * 8) * z - 1,
+                                (x + cx * 8 + 8) * z, (y + cy * 8 + 8) * z,
+                                outline=MARK_DARK, width=1, tags='sel')
         sheetc.create_rectangle((x + cx * 8) * z, (y + cy * 8) * z,
                                 (x + cx * 8 + 8) * z - 1, (y + cy * 8 + 8) * z - 1,
-                                outline='#ffffff', width=1, tags='sel')
+                                outline=MARK_LIGHT, width=1, tags='sel')
 
     def redraw_glyph():
         g = glyph()
@@ -473,7 +486,7 @@ def main():
         gcanvas.config(width=8 * CELL_W * z, height=8 * CELL_H * z)
         if g is None:
             gcanvas.delete('all')
-            gcanvas.create_text(8, 8, anchor='nw', fill='#ff66ff',
+            gcanvas.create_text(8, 8, anchor='nw', fill=D.NODATA_FILL,
                                 font=('Consolas', 11, 'bold'),
                                 text='no data\n\ntile 255 bottom-right:\ntileset.bin is one byte\n'
                                      'short, so this cell has\nno glyph. Not $00.')
@@ -553,9 +566,9 @@ def main():
             statechip.config(text=s.upper(), bg=STATE_BG[s])
         c = mapping.cls['counts']
         reflabel.config(text='SHEET — click a tile (sub-cell) to load.  %s   '
-                             'cyan = tiles using this glyph   '
+                             'MAGENTA = tiles using this glyph   '
                              'green tick = available/free (%d)   '
-                             'amber dot = no static reference (%d)   '
+                             'cyan dot = no static reference (%d)   '
                              'referenced (%d)'
                              % (S.Reference.LABELS[st['view']], c['available'],
                                 c['unverified'], c['referenced']))
