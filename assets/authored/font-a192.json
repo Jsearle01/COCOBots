@@ -2,14 +2,14 @@
  "tool": "tools/glyph_tool",
  "config": "a192",
  "written": "2026-08-01T19:37:41",
- "saves": 1,
+ "saves": 2,
  "source_font": "../../build/c4/font-192.bin",
  "source_sha256": "b034d241e17640e89bca1785f934e7a2bc8a3b5f1e16f33c451946658e98621c",
- "font_sha256": "b034d241e17640e89bca1785f934e7a2bc8a3b5f1e16f33c451946658e98621c",
+ "font_sha256": "1f25ee2468208985b9906b10fbfef5ab5d8b45a347cd2d61f1ccd7a5ba3264c2",
  "n_glyphs": 192,
  "counts": {
-  "untouched": 192,
-  "edited": 0,
+  "untouched": 191,
+  "edited": 1,
   "done": 0
  },
  "state": {
@@ -82,7 +82,7 @@
   "66": "untouched",
   "67": "untouched",
   "68": "untouched",
-  "69": "untouched",
+  "69": "edited",
   "70": "untouched",
   "71": "untouched",
   "72": "untouched",
@@ -208,5 +208,6 @@
  },
  "done": [],
  "first_edit": {},
- "last_edit": {}
+ "last_edit": {},
+ "note_c6a2": "glyph $45 edited in an interactive session 2026-08-01 20:08; recovered from the autosave after Clyde reverted it in error"
 }
